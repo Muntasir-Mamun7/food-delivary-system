@@ -4,6 +4,12 @@ document.addEventListener('DOMContentLoaded', function() {
   let token = localStorage.getItem('token');
   let currentUser = JSON.parse(localStorage.getItem('user'));
   
+  // Map related global variables
+  let map;
+  let routingControl;
+  let markers = [];
+  let activeOrders = [];
+  
   // DOM Elements
   const loginForm = document.getElementById('form-login');
   const registerForm = document.getElementById('form-register');
@@ -14,13 +20,6 @@ document.addEventListener('DOMContentLoaded', function() {
   const userRole = document.getElementById('user-role');
   const logoutBtn = document.getElementById('logout-btn');
   const tabButtons = document.querySelectorAll('.tab-btn');
-  const roleSelect = document.getElementById('register-role');
-if (roleSelect) {
-  const adminOption = document.createElement('option');
-  adminOption.value = 'admin';
-  adminOption.textContent = 'Admin';
-  roleSelect.appendChild(adminOption);
-}
   const formContainers = document.querySelectorAll('.form-container');
   const dashboards = document.querySelectorAll('.user-dashboard');
   
@@ -368,11 +367,15 @@ if (roleSelect) {
     // Load active orders
     loadActiveOrders();
     
+    // Initialize map
+    setupMap();
+    
     // Refresh data every 30 seconds
     const refreshInterval = setInterval(() => {
       if (currentUser && currentUser.role === 'courier') {
         loadAvailableOrders();
         loadActiveOrders();
+        loadActiveOrdersWithLocations(); // Refresh the map data too
       } else {
         clearInterval(refreshInterval);
       }
@@ -421,6 +424,7 @@ if (roleSelect) {
             await apiCall(`/api/orders/${orderId}/accept`, 'PUT');
             loadAvailableOrders();
             loadActiveOrders();
+            loadActiveOrdersWithLocations(); // Refresh map after accepting an order
           } catch (error) {
             alert(`Error accepting order: ${error.message}`);
           }
@@ -480,6 +484,7 @@ if (roleSelect) {
           try {
             await apiCall(`/api/orders/${orderId}/status`, 'PUT', { status });
             loadActiveOrders();
+            loadActiveOrdersWithLocations(); // Refresh map when order status changes
           } catch (error) {
             alert(`Error updating order: ${error.message}`);
           }
@@ -573,6 +578,400 @@ if (roleSelect) {
       <p>This is a simplified version. In a full application, customers would see their orders here.</p>
     `;
   }
+  
+  // Set up the map
+  function setupMap() {
+    const mapElement = document.getElementById('courier-map');
+    if (!mapElement) return;
+    
+    // Default map center (can be adjusted to your region)
+    const defaultCenter = [34.0522, -118.2437]; // Los Angeles: latitude, longitude
+    
+    // Initialize map
+    map = L.map('courier-map').setView(defaultCenter, 12);
+    
+    // Add OpenStreetMap tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+    
+    // If the courier has active orders, load them and display on map
+    if (currentUser && currentUser.role === 'courier') {
+      loadActiveOrdersWithLocations();
+    }
+  }
+  
+  // Load active orders and display on map
+  async function loadActiveOrdersWithLocations() {
+    try {
+      // Check if map exists
+      if (!map) return;
+      
+      // Get active orders
+      const orders = await apiCall('/api/orders/courier/active');
+      activeOrders = orders;
+      
+      // Clear existing markers
+      clearMarkers();
+      
+      if (orders.length === 0) {
+        if (document.getElementById('route-stops')) {
+          document.getElementById('route-stops').innerHTML = '<p>No active orders to display.</p>';
+        }
+        return;
+      }
+      
+      // Get locations for each address (merchant and customer)
+      const waypoints = [];
+      
+      // Start with courier's current location
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const courierLocation = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+            type: 'courier',
+            name: 'Your Location'
+          };
+          
+          // Add courier marker
+          addMarker(courierLocation);
+          
+          // Process each order
+          for (const order of orders) {
+            // Get merchant location
+            const merchantLocation = await geocodeAddress(order.merchant_address);
+            merchantLocation.type = 'merchant';
+            merchantLocation.name = order.merchant_name;
+            merchantLocation.orderId = order.id;
+            
+            // Get customer location
+            const customerLocation = await geocodeAddress(order.delivery_address);
+            customerLocation.type = 'customer';
+            customerLocation.name = order.customer_name;
+            customerLocation.orderId = order.id;
+            
+            // Add markers
+            addMarker(merchantLocation);
+            addMarker(customerLocation);
+            
+            // Add waypoints
+            waypoints.push(L.latLng(merchantLocation.lat, merchantLocation.lng));
+            waypoints.push(L.latLng(customerLocation.lat, customerLocation.lng));
+          }
+          
+          // Calculate and display route
+          if (waypoints.length > 0) {
+            calculateAndDisplayRoute(courierLocation, waypoints);
+          }
+          
+          // Fit map to show all markers
+          const group = new L.featureGroup(markers);
+          map.fitBounds(group.getBounds().pad(0.1)); // Add some padding
+        },
+        (error) => {
+          console.error("Error getting courier location:", error);
+          // If geolocation fails, use a default location
+          const defaultCourierLocation = {
+            lat: 34.0522,
+            lng: -118.2437,
+            type: 'courier',
+            name: 'Default Location'
+          };
+          
+          addMarker(defaultCourierLocation);
+          
+          // Process each order with default courier location
+          processOrdersWithLocation(defaultCourierLocation, orders, waypoints);
+        }
+      );
+    } catch (error) {
+      console.error('Error loading active orders with locations:', error);
+      if (document.getElementById('route-stops')) {
+        document.getElementById('route-stops').innerHTML = 
+          `<p class="error-message">Error loading route data: ${error.message}</p>`;
+      }
+    }
+  }
+  
+  // Process orders when courier location is known
+  async function processOrdersWithLocation(courierLocation, orders, waypoints) {
+    // Process each order
+    for (const order of orders) {
+      // Get merchant location
+      const merchantLocation = await geocodeAddress(order.merchant_address);
+      merchantLocation.type = 'merchant';
+      merchantLocation.name = order.merchant_name;
+      merchantLocation.orderId = order.id;
+      
+      // Get customer location
+      const customerLocation = await geocodeAddress(order.delivery_address);
+      customerLocation.type = 'customer';
+      customerLocation.name = order.customer_name;
+      customerLocation.orderId = order.id;
+      
+      // Add markers
+      addMarker(merchantLocation);
+      addMarker(customerLocation);
+      
+      // Add waypoints
+      waypoints.push(L.latLng(merchantLocation.lat, merchantLocation.lng));
+      waypoints.push(L.latLng(customerLocation.lat, customerLocation.lng));
+    }
+    
+    // Calculate and display route
+    if (waypoints.length > 0) {
+      calculateAndDisplayRoute(courierLocation, waypoints);
+    }
+    
+    // Fit map to show all markers
+    const group = new L.featureGroup(markers);
+    map.fitBounds(group.getBounds().pad(0.1)); // Add some padding
+  }
+  
+  // Geocode address to get lat/lng (simulated for demo)
+  async function geocodeAddress(address) {
+    return new Promise((resolve, reject) => {
+      // In a real implementation, use a geocoding API like Nominatim (OpenStreetMap's geocoder)
+      // For this demo, we'll simulate it with random coordinates near a base location
+      
+      // Base location (Los Angeles)
+      const baseLocation = { lat: 34.0522, lng: -118.2437 };
+      
+      // Generate a random location within ~3 miles
+      const location = {
+        lat: baseLocation.lat + (Math.random() - 0.5) * 0.06,
+        lng: baseLocation.lng + (Math.random() - 0.5) * 0.06,
+        address: address
+      };
+      
+      resolve(location);
+      
+      /* 
+      // For a real implementation with OpenStreetMap's Nominatim:
+      fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`)
+        .then(response => response.json())
+        .then(data => {
+          if (data && data.length > 0) {
+            resolve({
+              lat: parseFloat(data[0].lat),
+              lng: parseFloat(data[0].lon),
+              address: address
+            });
+          } else {
+            reject(new Error('Address not found'));
+          }
+        })
+        .catch(error => reject(error));
+      */
+    });
+  }
+  
+  // Add a marker to the map
+  function addMarker(location) {
+    if (!map) return null;
+    
+    const markerColors = {
+      courier: 'green',
+      merchant: 'blue',
+      customer: 'red'
+    };
+    
+    // Create marker icon
+    const markerHtmlStyles = `
+      background-color: ${markerColors[location.type] || '#3388ff'};
+      width: 2rem;
+      height: 2rem;
+      display: block;
+      left: -1rem;
+      top: -1rem;
+      position: relative;
+      border-radius: 2rem 2rem 0;
+      transform: rotate(45deg);
+      border: 1px solid #FFFFFF;
+    `;
+    
+    const icon = L.divIcon({
+      className: "marker-icon",
+      iconAnchor: [0, 24],
+      labelAnchor: [-6, 0],
+      popupAnchor: [0, -36],
+      html: `<span style="${markerHtmlStyles}" />`
+    });
+    
+    const marker = L.marker([location.lat, location.lng], { icon: icon }).addTo(map);
+    
+    // Add popup with information
+    const popupContent = `
+      <div class="popup-content">
+        <h4>${location.name}</h4>
+        <p>${location.address || ''}</p>
+        <p>Type: ${location.type.charAt(0).toUpperCase() + location.type.slice(1)}</p>
+        ${location.orderId ? `<p>Order #${location.orderId}</p>` : ''}
+      </div>
+    `;
+    
+    marker.bindPopup(popupContent);
+    markers.push(marker);
+    return marker;
+  }
+  
+  // Clear all markers from the map
+  function clearMarkers() {
+    if (!map) return;
+    
+    markers.forEach(marker => map.removeLayer(marker));
+    markers = [];
+    
+    // Clear any existing routes
+    if (routingControl) {
+      map.removeControl(routingControl);
+      routingControl = null;
+    }
+  }
+  
+  // Calculate and display the optimal route
+  function calculateAndDisplayRoute(origin, waypoints) {
+    // If there are no waypoints or no map, return
+    if (!waypoints || waypoints.length === 0 || !map) return;
+    
+    // For a basic route, use Leaflet Routing Machine
+    // This is a simplified version - in a real app you might want to use OSRM or GraphHopper
+    
+    // Start with origin
+    const routeWaypoints = [L.latLng(origin.lat, origin.lng)];
+    
+    // Add all waypoints
+    waypoints.forEach(waypoint => {
+      routeWaypoints.push(waypoint);
+    });
+    
+    // Add origin as the final destination (return to start)
+    routeWaypoints.push(L.latLng(origin.lat, origin.lng));
+    
+    // Create routing control
+    routingControl = L.Routing.control({
+      waypoints: routeWaypoints,
+      routeWhileDragging: true,
+      showAlternatives: false,
+      fitSelectedRoutes: false,
+      lineOptions: {
+        styles: [{ color: '#FF5722', opacity: 0.7, weight: 5 }]
+      },
+      createMarker: function() { return null; } // Don't create default markers
+    }).addTo(map);
+    
+    // Extract route information when available
+    routingControl.on('routesfound', function(e) {
+      const routes = e.routes;
+      const route = routes[0]; // Get the first (best) route
+      
+      renderRouteInfo(origin, waypoints, route);
+    });
+    
+    // For demo purposes, also render immediately with simulated data
+    renderRouteInfo(origin, waypoints);
+  }
+  
+  // Display route information in the sidebar
+  function renderRouteInfo(origin, waypoints, route = null) {
+    const routeStopsElement = document.getElementById('route-stops');
+    const estimatedTimesElement = document.getElementById('estimated-times');
+    
+    if (!routeStopsElement || !estimatedTimesElement) return;
+    
+    let routeHTML = '';
+    let totalTime = 0;
+    let totalDistance = 0;
+    
+    if (route) {
+      // Use actual route data if available
+      totalTime = Math.round(route.summary.totalTime / 60); // Convert to minutes
+      totalDistance = route.summary.totalDistance / 1000; // Convert to kilometers
+    } else {
+      // Use simulated data
+      totalTime = waypoints.length * 10; // 10 minutes per waypoint
+      totalDistance = waypoints.length * 2; // 2 km per waypoint
+    }
+    
+    // Add origin
+    routeHTML += `
+      <div class="route-stop">
+        <p><strong>Start:</strong> ${origin.name}</p>
+        <p><small>Your current location</small></p>
+      </div>
+    `;
+    
+    // Create a map of all locations for easier access
+    const locationMap = new Map();
+    activeOrders.forEach(order => {
+      locationMap.set(`merchant-${order.id}`, {
+        name: order.merchant_name,
+        address: order.merchant_address,
+        type: 'merchant',
+        orderId: order.id
+      });
+      
+      locationMap.set(`customer-${order.id}`, {
+        name: order.customer_name,
+        address: order.delivery_address,
+        type: 'customer',
+        orderId: order.id
+      });
+    });
+    
+    // Add waypoints
+    waypoints.forEach((waypoint, index) => {
+      // In a real implementation, this data would come from the route API
+      // For this demo, we're creating simulated ETAs
+      const eta = new Date();
+      eta.setMinutes(eta.getMinutes() + 10 + (index * 15)); // Simulated time
+      
+      // Find the matching location
+      let location = null;
+      for (const [key, value] of locationMap.entries()) {
+        // For this demo, we'll just alternate merchant/customer stops
+        if ((index % 2 === 0 && key.startsWith('merchant')) || 
+            (index % 2 === 1 && key.startsWith('customer'))) {
+          if (!location) location = value;
+        }
+      }
+      
+      if (location) {
+        routeHTML += `
+          <div class="route-stop stop-${location.type}">
+            <p><strong>Stop ${index + 1}:</strong> ${location.name}</p>
+            <p>${location.address}</p>
+            <p><small>Order #${location.orderId} - ${location.type.charAt(0).toUpperCase() + location.type.slice(1)}</small></p>
+            <p class="eta">ETA: ${eta.toLocaleTimeString()}</p>
+          </div>
+        `;
+      }
+    });
+    
+    // Add return to origin
+    routeHTML += `
+      <div class="route-stop">
+        <p><strong>Return:</strong> ${origin.name}</p>
+        <p><small>Your starting location</small></p>
+      </div>
+    `;
+    
+    // Update the DOM
+    routeStopsElement.innerHTML = routeHTML;
+    
+    // Display total estimated time and distance
+    estimatedTimesElement.innerHTML = `
+      <div class="route-summary">
+        <p><strong>Total estimated time:</strong> ${totalTime} minutes</p>
+        <p><strong>Total distance:</strong> ${totalDistance.toFixed(1)} km</p>
+      </div>
+    `;
+  }
+  
+  // Initialize map when document is ready
+  setTimeout(initializeMap, 1000);
   
   // Check if user is already logged in
   if (token && currentUser) {
