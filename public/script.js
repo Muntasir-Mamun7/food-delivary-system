@@ -14,6 +14,13 @@ document.addEventListener('DOMContentLoaded', function() {
   const userRole = document.getElementById('user-role');
   const logoutBtn = document.getElementById('logout-btn');
   const tabButtons = document.querySelectorAll('.tab-btn');
+  const roleSelect = document.getElementById('register-role');
+if (roleSelect) {
+  const adminOption = document.createElement('option');
+  adminOption.value = 'admin';
+  adminOption.textContent = 'Admin';
+  roleSelect.appendChild(adminOption);
+}
   const formContainers = document.querySelectorAll('.form-container');
   const dashboards = document.querySelectorAll('.user-dashboard');
   
