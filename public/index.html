@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Food Delivery System</title>
   <link rel="stylesheet" href="styles.css">
-  
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" 
         integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" 
@@ -17,71 +17,91 @@
 <body>
   <div class="container">
     <header>
-      <h1>Food Delivery System</h1>
+      <div class="logo-container">
+        <i class="fas fa-utensils logo-icon"></i>
+        <h1>QuickBite</h1>
+      </div>
       <div id="user-info" class="hidden">
         <span>Welcome, <strong id="user-name">User</strong></span>
         <span id="user-role">Role</span>
-        <button id="logout-btn">Logout</button>
+        <button id="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</button>
       </div>
     </header>
 
     <!-- Authentication Forms -->
     <div id="auth-container">
-      <div class="tabs">
-        <button class="tab-btn active" data-tab="login">Login</button>
-        <button class="tab-btn" data-tab="register">Register</button>
+      <div class="auth-welcome">
+        <div class="auth-hero">
+          <h2>Delicious food, delivered fast</h2>
+          <p>The most convenient way to get your favorite meals delivered right to your door.</p>
+        </div>
       </div>
+      <div class="auth-forms">
+        <div class="tabs">
+          <button class="tab-btn active" data-tab="login">Login</button>
+          <button class="tab-btn" data-tab="register">Register</button>
+        </div>
 
-      <!-- Login Form -->
-      <div id="login-form" class="form-container active">
-        <h2>Login</h2>
-        <form id="form-login">
-          <div class="form-group">
-            <label for="login-email">Email</label>
-            <input type="email" id="login-email" required>
-          </div>
-          <div class="form-group">
-            <label for="login-password">Password</label>
-            <input type="password" id="login-password" required>
-          </div>
-          <button type="submit" class="btn">Login</button>
-          <p id="login-error" class="error-message"></p>
-        </form>
-      </div>
+        <!-- Login Form -->
+        <div id="login-form" class="form-container active">
+          <h2>Login</h2>
+          <form id="form-login">
+            <div class="form-group">
+              <label for="login-email">Email</label>
+              <input type="email" id="login-email" required>
+            </div>
+            <div class="form-group">
+              <label for="login-password">Password</label>
+              <input type="password" id="login-password" required>
+            </div>
+            <button type="submit" class="btn"><i class="fas fa-sign-in-alt"></i> Login</button>
+            <p id="login-error" class="error-message"></p>
+            <div class="demo-accounts">
+              <p>Demo Accounts:</p>
+              <ul>
+                <li><strong>Customer:</strong> customer@demo.com / password123</li>
+                <li><strong>Merchant:</strong> burger@demo.com / password123</li>
+                <li><strong>Courier:</strong> courier@demo.com / password123</li>
+                <li><strong>Admin:</strong> admin@admin.com / admin123</li>
+              </ul>
+            </div>
+          </form>
+        </div>
 
-      <!-- Register Form -->
-      <div id="register-form" class="form-container">
-        <h2>Register</h2>
-        <form id="form-register">
-          <div class="form-group">
-            <label for="register-name">Name</label>
-            <input type="text" id="register-name" required>
-          </div>
-          <div class="form-group">
-            <label for="register-email">Email</label>
-            <input type="email" id="register-email" required>
-          </div>
-          <div class="form-group">
-            <label for="register-password">Password</label>
-            <input type="password" id="register-password" required>
-          </div>
-          <div class="form-group">
-            <label for="register-role">Role</label>
-            <select id="register-role" required>
-              <option value="">Select a role</option>
-              <option value="customer">Customer</option>
-              <option value="merchant">Restaurant/Merchant</option>
-              <option value="courier">Courier</option>
-              <!-- Admin option will be added via JavaScript temporarily -->
-            </select>
-          </div>
-          <div class="form-group">
-            <label for="register-address">Address</label>
-            <input type="text" id="register-address" required>
-          </div>
-          <button type="submit" class="btn">Register</button>
-          <p id="register-error" class="error-message"></p>
-        </form>
+        <!-- Register Form -->
+        <div id="register-form" class="form-container">
+          <h2>Register</h2>
+          <form id="form-register">
+            <div class="form-group">
+              <label for="register-name">Name</label>
+              <input type="text" id="register-name" required>
+            </div>
+            <div class="form-group">
+              <label for="register-email">Email</label>
+              <input type="email" id="register-email" required>
+            </div>
+            <div class="form-group">
+              <label for="register-password">Password</label>
+              <input type="password" id="register-password" required>
+            </div>
+            <div class="form-group">
+              <label for="register-role">Role</label>
+              <select id="register-role" required>
+                <option value="">Select a role</option>
+                <option value="customer">Customer</option>
+                <option value="merchant">Restaurant/Merchant</option>
+                <option value="courier">Courier</option>
+                <!-- Admin option will be added via JavaScript temporarily -->
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="register-address">Address</label>
+              <input type="text" id="register-address" required>
+            </div>
+            <button type="submit" class="btn"><i class="fas fa-user-plus"></i> Register</button>
+            <p id="register-error" class="error-message"></p>
+          </form>
+        </div>
       </div>
     </div>
 
@@ -89,152 +109,476 @@
     <div id="dashboard-container" class="hidden">
       <!-- Merchant Dashboard -->
       <div id="merchant-dashboard" class="user-dashboard hidden">
-        <h2>Merchant Dashboard</h2>
-        
-        <div class="dashboard-section">
-          <h3>Create Order</h3>
-          <form id="create-order-form">
-            <div class="form-group">
-              <label for="customer-id">Customer Email</label>
-              <input type="email" id="customer-id" required>
+        <div class="dashboard-sidebar">
+          <div class="dashboard-nav">
+            <div class="user-profile">
+              <i class="fas fa-store profile-icon"></i>
+              <h3 id="merchant-name">Restaurant</h3>
             </div>
-            <div class="form-group">
-              <label for="delivery-address">Delivery Address</label>
-              <input type="text" id="delivery-address" required>
-            </div>
-            <div id="merchant-map-container">
-              <p>Select delivery location on the map:</p>
-              <div id="merchant-map"></div>
-              <p class="map-coordinates">
-                Coordinates: <span id="delivery-lat">0</span>, <span id="delivery-lng">0</span>
-              </p>
-            </div>
-            <div class="form-group">
-              <label for="due-time">Required Delivery Time</label>
-              <input type="datetime-local" id="due-time" required>
-            </div>
-            <h4>Order Items</h4>
-            <button type="button" id="add-item-btn">Add Item</button>
-            <div id="order-items">
-              <div class="order-item">
-                <input type="text" placeholder="Item name" class="item-name" required>
-                <input type="number" placeholder="Price" class="item-price" step="0.01" required>
-                <input type="number" placeholder="Quantity" class="item-quantity" min="1" value="1" required>
-                <button type="button" class="remove-item">Remove</button>
-              </div>
-            </div>
-            <button type="submit" class="btn">Create Order</button>
-          </form>
+            <ul class="nav-menu">
+              <li class="active" data-section="merchant-overview"><i class="fas fa-chart-line"></i> Overview</li>
+              <li data-section="merchant-create-order"><i class="fas fa-plus-circle"></i> Create Order</li>
+              <li data-section="merchant-orders"><i class="fas fa-list-alt"></i> Manage Orders</li>
+            </ul>
+          </div>
         </div>
         
-        <div class="dashboard-section">
-          <h3>My Orders</h3>
-          <div id="merchant-orders" class="orders-list">
-            <p>Loading orders...</p>
+        <div class="dashboard-content">
+          <!-- Merchant Overview Section -->
+          <div id="merchant-overview" class="dashboard-section active">
+            <h2><i class="fas fa-chart-line"></i> Dashboard Overview</h2>
+            
+            <div class="stats-cards">
+              <div class="stat-card">
+                <div class="stat-icon"><i class="fas fa-shopping-bag"></i></div>
+                <div class="stat-data">
+                  <h3 id="total-orders">0</h3>
+                  <p>Total Orders</p>
+                </div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-icon"><i class="fas fa-hourglass-half"></i></div>
+                <div class="stat-data">
+                  <h3 id="pending-orders">0</h3>
+                  <p>Pending Orders</p>
+                </div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-icon"><i class="fas fa-truck"></i></div>
+                <div class="stat-data">
+                  <h3 id="in-delivery-orders">0</h3>
+                  <p>In Delivery</p>
+                </div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-icon"><i class="fas fa-money-bill-wave"></i></div>
+                <div class="stat-data">
+                  <h3 id="total-revenue">$0.00</h3>
+                  <p>Total Revenue</p>
+                </div>
+              </div>
+            </div>
+            
+            <div class="recent-orders-section">
+              <h3><i class="fas fa-clock"></i> Recent Orders</h3>
+              <div id="recent-orders" class="orders-list">
+                <p>Loading recent orders...</p>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Create Order Section -->
+          <div id="merchant-create-order" class="dashboard-section">
+            <h2><i class="fas fa-plus-circle"></i> Create New Order</h2>
+            
+            <form id="create-order-form">
+              <div class="form-group">
+                <label for="customer-id"><i class="fas fa-user"></i> Customer Email</label>
+                <input type="email" id="customer-id" placeholder="Enter customer email" required>
+              </div>
+              <div class="form-group">
+                <label for="delivery-address"><i class="fas fa-map-marker-alt"></i> Delivery Address</label>
+                <input type="text" id="delivery-address" placeholder="Enter delivery address" required>
+              </div>
+              <div class="map-container">
+                <label><i class="fas fa-map"></i> Select Delivery Location on Map</label>
+                <div id="merchant-map"></div>
+                <div class="map-coordinates">
+                  <span>Selected location: <strong id="delivery-address-display">None selected</strong></span>
+                  <input type="hidden" id="delivery-lat" value="0">
+                  <input type="hidden" id="delivery-lng" value="0">
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="due-time"><i class="fas fa-clock"></i> Required Delivery Time</label>
+                <input type="datetime-local" id="due-time" required>
+              </div>
+              <div class="order-items-section">
+                <h3><i class="fas fa-utensils"></i> Order Items</h3>
+                <button type="button" id="add-item-btn"><i class="fas fa-plus"></i> Add Item</button>
+                <div id="order-items">
+                  <div class="order-item">
+                    <input type="text" placeholder="Item name" class="item-name" required>
+                    <input type="number" placeholder="Price" class="item-price" step="0.01" required>
+                    <input type="number" placeholder="Quantity" class="item-quantity" min="1" value="1" required>
+                    <button type="button" class="remove-item"><i class="fas fa-trash"></i></button>
+                  </div>
+                </div>
+                <div class="order-summary">
+                  <p>Total: $<span id="order-total">0.00</span></p>
+                </div>
+              </div>
+              <button type="submit" class="btn"><i class="fas fa-paper-plane"></i> Create Order</button>
+            </form>
+          </div>
+          
+          <!-- Manage Orders Section -->
+          <div id="merchant-orders" class="dashboard-section">
+            <h2><i class="fas fa-list-alt"></i> Manage Orders</h2>
+            
+            <div class="order-filters">
+              <div class="filter-group">
+                <label for="order-status-filter">Filter by Status:</label>
+                <select id="order-status-filter">
+                  <option value="all">All Orders</option>
+                  <option value="pending">Pending</option>
+                  <option value="accepted">Accepted</option>
+                  <option value="out-for-delivery">Out for Delivery</option>
+                  <option value="delivered">Delivered</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+              </div>
+              <div class="search-group">
+                <input type="text" id="order-search" placeholder="Search orders...">
+                <button id="order-search-btn"><i class="fas fa-search"></i></button>
+              </div>
+            </div>
+            
+            <div id="merchant-orders-list" class="orders-list">
+              <p>Loading orders...</p>
+            </div>
           </div>
         </div>
       </div>
 
       <!-- Courier Dashboard -->
       <div id="courier-dashboard" class="user-dashboard hidden">
-        <h2>Courier Dashboard</h2>
+        <div class="dashboard-sidebar">
+          <div class="dashboard-nav">
+            <div class="user-profile">
+              <i class="fas fa-motorcycle profile-icon"></i>
+              <h3 id="courier-name">Courier</h3>
+            </div>
+            <ul class="nav-menu">
+              <li class="active" data-section="courier-overview"><i class="fas fa-chart-line"></i> Overview</li>
+              <li data-section="courier-route"><i class="fas fa-route"></i> Route Planning</li>
+              <li data-section="courier-available"><i class="fas fa-list"></i> Available Orders</li>
+              <li data-section="courier-active"><i class="fas fa-truck"></i> Active Deliveries</li>
+            </ul>
+          </div>
+        </div>
         
-        <div class="dashboard-section">
-          <h3>Route Planning</h3>
-          <div id="map-container">
-            <div id="courier-map"></div>
-            <div id="route-info">
-              <h4>Delivery Route</h4>
-              <div id="route-stops"></div>
-              <div id="estimated-times"></div>
+        <div class="dashboard-content">
+          <!-- Courier Overview Section -->
+          <div id="courier-overview" class="dashboard-section active">
+            <h2><i class="fas fa-chart-line"></i> Dashboard Overview</h2>
+            
+            <div class="stats-cards">
+              <div class="stat-card">
+                <div class="stat-icon"><i class="fas fa-shipping-fast"></i></div>
+                <div class="stat-data">
+                  <h3 id="active-deliveries">0</h3>
+                  <p>Active Deliveries</p>
+                </div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
+                <div class="stat-data">
+                  <h3 id="completed-deliveries">0</h3>
+                  <p>Completed Deliveries</p>
+                </div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-icon"><i class="fas fa-route"></i></div>
+                <div class="stat-data">
+                  <h3 id="total-deliveries">0</h3>
+                  <p>Total Deliveries</p>
+                </div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-icon"><i class="fas fa-money-bill-wave"></i></div>
+                <div class="stat-data">
+                  <h3 id="total-earnings">$0.00</h3>
+                  <p>Total Earnings</p>
+                </div>
+              </div>
+            </div>
+            
+            <div class="current-status-section">
+              <h3><i class="fas fa-user-clock"></i> Your Current Status</h3>
+              <div class="status-indicator">
+                <span id="courier-status" class="status-badge available">Available</span>
+                <p>You are currently available for new deliveries.</p>
+              </div>
             </div>
           </div>
-        </div>
-        
-        <div class="dashboard-section">
-          <h3>Available Orders</h3>
-          <div id="available-orders" class="orders-list">
-            <p>Loading available orders...</p>
+          
+          <!-- Route Planning Section -->
+          <div id="courier-route" class="dashboard-section">
+            <h2><i class="fas fa-route"></i> Route Planning</h2>
+            
+            <div class="route-container">
+              <div class="map-container">
+                <div id="courier-map"></div>
+              </div>
+              <div class="route-details">
+                <h3><i class="fas fa-list-ol"></i> Delivery Route</h3>
+                <div id="route-stops"></div>
+                <div id="estimated-times"></div>
+              </div>
+            </div>
           </div>
-        </div>
-        
-        <div class="dashboard-section">
-          <h3>Active Orders</h3>
-          <div id="active-orders" class="orders-list">
-            <p>Loading active orders...</p>
+          
+          <!-- Available Orders Section -->
+          <div id="courier-available" class="dashboard-section">
+            <h2><i class="fas fa-list"></i> Available Orders</h2>
+            
+            <div class="available-orders-info">
+              <p><i class="fas fa-info-circle"></i> These orders are available for pickup. Accept orders that you can deliver on time.</p>
+            </div>
+            
+            <div id="available-orders" class="orders-grid">
+              <p>Loading available orders...</p>
+            </div>
+          </div>
+          
+          <!-- Active Deliveries Section -->
+          <div id="courier-active" class="dashboard-section">
+            <h2><i class="fas fa-truck"></i> Active Deliveries</h2>
+            
+            <div id="active-orders" class="orders-list">
+              <p>Loading active orders...</p>
+            </div>
           </div>
         </div>
       </div>
 
       <!-- Customer Dashboard -->
       <div id="customer-dashboard" class="user-dashboard hidden">
-        <h2>Customer Dashboard</h2>
-        
-        <div class="dashboard-section">
-          <h3>Restaurants</h3>
-          <div id="customer-restaurants" class="restaurants-list">
-            <p>Loading restaurants...</p>
+        <div class="dashboard-sidebar">
+          <div class="dashboard-nav">
+            <div class="user-profile">
+              <i class="fas fa-user profile-icon"></i>
+              <h3 id="customer-name">Customer</h3>
+            </div>
+            <ul class="nav-menu">
+              <li class="active" data-section="customer-restaurants"><i class="fas fa-utensils"></i> Restaurants</li>
+              <li data-section="customer-orders"><i class="fas fa-list-alt"></i> My Orders</li>
+            </ul>
           </div>
         </div>
         
-        <!-- Restaurant Menu Section (hidden by default) -->
-        <div id="restaurant-menu-section" class="dashboard-section hidden">
-          <button id="back-to-restaurants" class="btn-secondary">← Back to Restaurants</button>
-          <h3 id="restaurant-name">Restaurant Name</h3>
-          <div id="restaurant-menu" class="menu-list">
-            <p>Loading menu...</p>
+        <div class="dashboard-content">
+          <!-- Restaurants Section -->
+          <div id="customer-restaurants" class="dashboard-section active">
+            <div class="search-bar">
+              <input type="text" id="restaurant-search" placeholder="Search for restaurants...">
+              <button id="restaurant-search-btn"><i class="fas fa-search"></i></button>
+            </div>
+            
+            <div class="restaurant-categories">
+              <button class="category-btn active" data-category="all">All</button>
+              <button class="category-btn" data-category="Fast Food">Fast Food</button>
+              <button class="category-btn" data-category="Chinese">Chinese</button>
+              <button class="category-btn" data-category="Italian">Italian</button>
+              <button class="category-btn" data-category="Japanese">Japanese</button>
+              <button class="category-btn" data-category="Healthy">Healthy</button>
+            </div>
+            
+            <div id="customer-restaurants-list" class="restaurants-grid">
+              <p>Loading restaurants...</p>
+            </div>
           </div>
           
-          <div id="cart-section">
-            <h3>Your Order</h3>
-            <div id="cart-items">
-              <p id="empty-cart-message">Your cart is empty</p>
+          <!-- My Orders Section -->
+          <div id="customer-orders" class="dashboard-section">
+            <h2><i class="fas fa-list-alt"></i> My Orders</h2>
+            
+            <div class="order-status-tabs">
+              <button class="status-tab active" data-status="all">All Orders</button>
+              <button class="status-tab" data-status="pending">Pending</button>
+              <button class="status-tab" data-status="accepted">In Progress</button>
+              <button class="status-tab" data-status="delivered">Delivered</button>
             </div>
-            <div id="cart-total" class="hidden">
-              <p>Total: $<span id="cart-total-price">0.00</span></p>
-              <div class="form-group">
-                <label for="customer-address">Delivery Address</label>
-                <input type="text" id="customer-address">
-              </div>
-              <div id="customer-map-container">
-                <p>Select your delivery location on the map:</p>
-                <div id="customer-map"></div>
-                <p class="map-coordinates">
-                  Coordinates: <span id="customer-lat">0</span>, <span id="customer-lng">0</span>
-                </p>
-              </div>
-              <div class="form-group">
-                <label for="customer-due-time">Delivery Time</label>
-                <input type="datetime-local" id="customer-due-time">
-              </div>
-              <button id="place-order-btn" class="btn">Place Order</button>
+            
+            <div id="customer-orders-list" class="orders-list">
+              <p>Loading orders...</p>
             </div>
           </div>
-        </div>
-        
-        <div class="dashboard-section">
-          <h3>My Orders</h3>
-          <div id="customer-orders" class="orders-list">
-            <p>Loading orders...</p>
+          
+          <!-- Restaurant Menu Section (hidden by default) -->
+          <div id="restaurant-menu-section" class="dashboard-section hidden">
+            <div class="restaurant-header">
+              <button id="back-to-restaurants" class="btn-secondary"><i class="fas fa-arrow-left"></i> Back to Restaurants</button>
+              <h2 id="restaurant-name">Restaurant Name</h2>
+            </div>
+            
+            <div class="menu-container">
+              <div id="restaurant-menu" class="menu-list">
+                <p>Loading menu...</p>
+              </div>
+              
+              <div id="cart-section">
+                <h3><i class="fas fa-shopping-cart"></i> Your Order</h3>
+                <div id="cart-items">
+                  <p id="empty-cart-message">Your cart is empty</p>
+                </div>
+                <div id="cart-total" class="hidden">
+                  <div class="cart-summary">
+                    <p>Subtotal: $<span id="cart-subtotal">0.00</span></p>
+                    <p>Delivery Fee: $<span id="delivery-fee">2.99</span></p>
+                    <p class="cart-total-row">Total: $<span id="cart-total-price">0.00</span></p>
+                  </div>
+                  
+                  <div class="delivery-details">
+                    <h4><i class="fas fa-map-marker-alt"></i> Delivery Details</h4>
+                    <div class="form-group">
+                      <label for="customer-address">Delivery Address</label>
+                      <input type="text" id="customer-address">
+                    </div>
+                    <div class="map-container">
+                      <div id="customer-map"></div>
+                      <div class="map-coordinates">
+                        <span>Selected location: <strong id="customer-address-display">None selected</strong></span>
+                        <input type="hidden" id="customer-lat" value="0">
+                        <input type="hidden" id="customer-lng" value="0">
+                      </div>
+                    </div>
+                    <div class="form-group">
+                      <label for="customer-due-time">Delivery Time</label>
+                      <input type="datetime-local" id="customer-due-time">
+                    </div>
+                  </div>
+                  
+                  <button id="place-order-btn" class="btn"><i class="fas fa-check-circle"></i> Place Order</button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
       <!-- Admin Dashboard -->
       <div id="admin-dashboard" class="user-dashboard hidden">
-        <h2>Admin Dashboard</h2>
-        
-        <div class="dashboard-section">
-          <h3>All Users</h3>
-          <div id="admin-users" class="users-list">
-            <p>Loading users...</p>
+        <div class="dashboard-sidebar">
+          <div class="dashboard-nav">
+            <div class="user-profile">
+              <i class="fas fa-user-shield profile-icon"></i>
+              <h3 id="admin-name">Administrator</h3>
+            </div>
+            <ul class="nav-menu">
+              <li class="active" data-section="admin-overview"><i class="fas fa-chart-line"></i> Overview</li>
+              <li data-section="admin-users"><i class="fas fa-users"></i> Users</li>
+              <li data-section="admin-orders"><i class="fas fa-clipboard-list"></i> Orders</li>
+            </ul>
           </div>
         </div>
         
-        <div class="dashboard-section">
-          <h3>All Orders</h3>
-          <div id="admin-orders" class="orders-list">
-            <p>Loading orders...</p>
+        <div class="dashboard-content">
+          <!-- Admin Overview Section -->
+          <div id="admin-overview" class="dashboard-section active">
+            <h2><i class="fas fa-chart-line"></i> System Overview</h2>
+            
+            <div class="stats-cards">
+              <div class="stat-card">
+                <div class="stat-icon"><i class="fas fa-users"></i></div>
+                <div class="stat-data">
+                  <h3 id="total-users">0</h3>
+                  <p>Total Users</p>
+                </div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-icon"><i class="fas fa-utensils"></i></div>
+                <div class="stat-data">
+                  <h3 id="total-merchants">0</h3>
+                  <p>Restaurants</p>
+                </div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-icon"><i class="fas fa-shopping-bag"></i></div>
+                <div class="stat-data">
+                  <h3 id="admin-total-orders">0</h3>
+                  <p>Total Orders</p>
+                </div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-icon"><i class="fas fa-money-bill-wave"></i></div>
+                <div class="stat-data">
+                  <h3 id="admin-total-revenue">$0.00</h3>
+                  <p>Total Revenue</p>
+                </div>
+              </div>
+            </div>
+            
+            <div class="system-status">
+              <h3><i class="fas fa-server"></i> System Status</h3>
+              <div class="status-cards">
+                <div class="status-card">
+                  <div class="status-icon green"><i class="fas fa-check-circle"></i></div>
+                  <div class="status-info">
+                    <h4>API Services</h4>
+                    <p>All systems operational</p>
+                  </div>
+                </div>
+                <div class="status-card">
+                  <div class="status-icon green"><i class="fas fa-check-circle"></i></div>
+                  <div class="status-info">
+                    <h4>Database</h4>
+                    <p>Connected and responsive</p>
+                  </div>
+                </div>
+                <div class="status-card">
+                  <div class="status-icon green"><i class="fas fa-check-circle"></i></div>
+                  <div class="status-info">
+                    <h4>Map Services</h4>
+                    <p>Working correctly</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Admin Users Section -->
+          <div id="admin-users" class="dashboard-section">
+            <h2><i class="fas fa-users"></i> User Management</h2>
+            
+            <div class="admin-filters">
+              <div class="filter-group">
+                <label for="user-role-filter">Filter by Role:</label>
+                <select id="user-role-filter">
+                  <option value="all">All Users</option>
+                  <option value="customer">Customers</option>
+                  <option value="merchant">Merchants</option>
+                  <option value="courier">Couriers</option>
+                  <option value="admin">Administrators</option>
+                </select>
+              </div>
+              <div class="search-group">
+                <input type="text" id="user-search" placeholder="Search users...">
+                <button id="user-search-btn"><i class="fas fa-search"></i></button>
+              </div>
+            </div>
+            
+            <div id="admin-users-list" class="users-list">
+              <p>Loading users...</p>
+            </div>
+          </div>
+          
+          <!-- Admin Orders Section -->
+          <div id="admin-orders" class="dashboard-section">
+            <h2><i class="fas fa-clipboard-list"></i> All Orders</h2>
+            
+            <div class="admin-filters">
+              <div class="filter-group">
+                <label for="admin-order-status">Filter by Status:</label>
+                <select id="admin-order-status">
+                  <option value="all">All Orders</option>
+                  <option value="pending">Pending</option>
+                  <option value="accepted">Accepted</option>
+                  <option value="out-for-delivery">Out for Delivery</option>
+                  <option value="delivered">Delivered</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+              </div>
+              <div class="search-group">
+                <input type="text" id="admin-order-search" placeholder="Search orders...">
+                <button id="admin-order-search-btn"><i class="fas fa-search"></i></button>
+              </div>
+            </div>
+            
+            <div id="admin-orders-list" class="orders-list">
+              <p>Loading orders...</p>
+            </div>
           </div>
         </div>
       </div>
@@ -242,8 +586,8 @@
   </div>
 
   <!-- System Info -->
-  <footer style="text-align: center; margin-top: 30px; font-size: 0.8em; color: #777;">
-    <p>Current Date and Time (UTC): 2025-06-08 08:04:58</p>
+  <footer>
+    <p>Current Date and Time (UTC): 2025-06-08 08:31:42</p>
     <p>User: Muntasir-Mamun7</p>
   </footer>
   
