@@ -212,13 +212,25 @@ button:hover {
   gap: 20px;
 }
 
-#courier-map {
+#courier-map, #merchant-map, #customer-map {
   height: 400px;
   flex: 2;
   min-width: 300px;
   border-radius: 8px;
   overflow: hidden;
   border: 1px solid #ddd;
+  margin-bottom: 15px;
+}
+
+#merchant-map-container, #customer-map-container {
+  margin-bottom: 20px;
+}
+
+.map-coordinates {
+  font-size: 0.9rem;
+  color: #666;
+  margin-top: 5px;
+  margin-bottom: 15px;
 }
 
 #route-info {
@@ -453,7 +465,7 @@ button:hover {
     flex-direction: column;
   }
   
-  #courier-map {
+  #courier-map, #merchant-map, #customer-map {
     height: 300px;
   }
   
