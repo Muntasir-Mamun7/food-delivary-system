@@ -45,6 +45,8 @@ function initializeDatabase() {
     customer_id INTEGER NOT NULL,
     courier_id INTEGER,
     delivery_address TEXT NOT NULL,
+    delivery_lat REAL,
+    delivery_lng REAL,
     required_due_time DATETIME NOT NULL,
     status TEXT DEFAULT 'pending',
     total_price REAL NOT NULL,
@@ -95,20 +97,20 @@ function initializeDatabase() {
     }
 
     if (row.count === 0) {
-      // Insert restaurant
+      // Insert restaurant - Now using Xianlin, Nanjing, China coordinates
       db.run(`INSERT INTO locations (name, lat, lng, type) VALUES (?, ?, ?, ?)`,
-        ["Restaurant HQ", 34.0522, -118.2437, "restaurant"]);
+        ["Restaurant HQ", 32.1056, 118.9565, "restaurant"]);
 
-      // Insert customer addresses
+      // Insert customer addresses - adjusted to be around Xianlin
       const customers = [
-        ["Customer 1", 34.0511, -118.2428],
-        ["Customer 2", 34.0544, -118.2401],
-        ["Customer 3", 34.0496, -118.2500],
-        ["Customer 4", 34.0578, -118.2389],
-        ["Customer 5", 34.0463, -118.2356],
-        ["Customer 6", 34.0602, -118.2456],
-        ["Customer 7", 34.0493, -118.2308],
-        ["Customer 8", 34.0622, -118.2537]
+        ["Customer 1", 32.1046, 118.9555],
+        ["Customer 2", 32.1066, 118.9575],
+        ["Customer 3", 32.1036, 118.9545],
+        ["Customer 4", 32.1076, 118.9585],
+        ["Customer 5", 32.1026, 118.9535],
+        ["Customer 6", 32.1086, 118.9595],
+        ["Customer 7", 32.1016, 118.9525],
+        ["Customer 8", 32.1096, 118.9605]
       ];
 
       customers.forEach(customer => {
@@ -132,7 +134,7 @@ function initializeDatabase() {
           name: "Burger Paradise",
           email: "burger@demo.com",
           password: "password123",
-          address: "123 Burger St, Los Angeles, CA",
+          address: "123 Xianlin Road, Nanjing, China",
           menuItems: [
             { name: "Classic Burger", description: "Beef patty with lettuce, tomato, and special sauce", price: 8.99, category: "Burgers" },
             { name: "Cheeseburger", description: "Classic burger with American cheese", price: 9.99, category: "Burgers" },
@@ -145,7 +147,7 @@ function initializeDatabase() {
           name: "Pizza Heaven",
           email: "pizza@demo.com",
           password: "password123",
-          address: "456 Pizza Ave, Los Angeles, CA",
+          address: "456 Xianlin Ave, Nanjing, China",
           menuItems: [
             { name: "Margherita Pizza", description: "Classic tomato and mozzarella", price: 12.99, category: "Pizzas" },
             { name: "Pepperoni Pizza", description: "Pepperoni with mozzarella", price: 14.99, category: "Pizzas" },
@@ -158,7 +160,7 @@ function initializeDatabase() {
           name: "Sushi Express",
           email: "sushi@demo.com",
           password: "password123",
-          address: "789 Sushi Blvd, Los Angeles, CA",
+          address: "789 Xianlin Blvd, Nanjing, China",
           menuItems: [
             { name: "California Roll", description: "Crab, avocado, and cucumber", price: 6.99, category: "Rolls" },
             { name: "Spicy Tuna Roll", description: "Fresh tuna with spicy mayo", price: 7.99, category: "Rolls" },
@@ -353,12 +355,12 @@ app.get('/api/restaurants/:restaurantId/menu', authenticateToken, (req, res) => 
 
 // Create order (customer)
 app.post('/api/customer/orders', authenticateToken, authorize(['customer']), (req, res) => {
-  const { restaurant_id, items, total_price, delivery_address, required_due_time } = req.body;
+  const { restaurant_id, items, total_price, delivery_address, delivery_lat, delivery_lng, required_due_time } = req.body;
   
   db.run(`INSERT INTO orders 
-    (merchant_id, customer_id, delivery_address, required_due_time, total_price)
-    VALUES (?, ?, ?, ?, ?)`,
-    [restaurant_id, req.user.id, delivery_address, required_due_time, total_price],
+    (merchant_id, customer_id, delivery_address, delivery_lat, delivery_lng, required_due_time, total_price)
+    VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [restaurant_id, req.user.id, delivery_address, delivery_lat, delivery_lng, required_due_time, total_price],
     function(err) {
       if (err) {
         console.error('Error creating order:', err);
@@ -405,12 +407,12 @@ app.get('/api/customer/orders', authenticateToken, authorize(['customer']), (req
 
 // Create order (merchant)
 app.post('/api/orders', authenticateToken, authorize(['merchant']), (req, res) => {
-  const { customer_id, items, total_price, delivery_address, required_due_time } = req.body;
+  const { customer_id, items, total_price, delivery_address, delivery_lat, delivery_lng, required_due_time } = req.body;
   
   db.run(`INSERT INTO orders 
-    (merchant_id, customer_id, delivery_address, required_due_time, total_price)
-    VALUES (?, ?, ?, ?, ?)`,
-    [req.user.id, customer_id, delivery_address, required_due_time, total_price],
+    (merchant_id, customer_id, delivery_address, delivery_lat, delivery_lng, required_due_time, total_price, status)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')`,
+    [req.user.id, customer_id, delivery_address, delivery_lat, delivery_lng, required_due_time, total_price],
     function(err) {
       if (err) {
         console.error('Error creating order:', err);
@@ -457,7 +459,8 @@ app.get('/api/orders/merchant', authenticateToken, authorize(['merchant']), (req
 
 // Get available orders for couriers
 app.get('/api/orders/available', authenticateToken, authorize(['courier']), (req, res) => {
-  db.all(`SELECT o.*, u.name as merchant_name, u.address as merchant_address
+  db.all(`SELECT o.*, u.name as merchant_name, u.address as merchant_address,
+    o.delivery_lat, o.delivery_lng
     FROM orders o
     JOIN users u ON o.merchant_id = u.id
     WHERE o.courier_id IS NULL AND o.status = 'pending'
@@ -509,7 +512,8 @@ app.put('/api/orders/:orderId/accept', authenticateToken, authorize(['courier'])
 app.get('/api/orders/courier/active', authenticateToken, authorize(['courier']), (req, res) => {
   db.all(`SELECT o.*, 
     m.name as merchant_name, m.address as merchant_address,
-    c.name as customer_name, o.delivery_address as customer_address
+    c.name as customer_name, o.delivery_address as customer_address,
+    o.delivery_lat, o.delivery_lng
     FROM orders o
     JOIN users m ON o.merchant_id = m.id
     JOIN users c ON o.customer_id = c.id
@@ -537,7 +541,7 @@ app.put('/api/orders/:orderId/status', authenticateToken, (req, res) => {
     if (
       (req.user.role === 'courier' && order.courier_id != req.user.id) ||
       (req.user.role === 'merchant' && order.merchant_id != req.user.id && 
-       !['preparing', 'cancelled'].includes(status)) ||
+       !['cancelled'].includes(status)) ||
       (req.user.role === 'courier' && !['out-for-delivery', 'delivered'].includes(status)) ||
       (req.user.role !== 'admin' && req.user.role !== 'courier' && 
        req.user.role !== 'merchant')
