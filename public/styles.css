@@ -78,6 +78,17 @@ button:hover {
   background-color: #E64A19;
 }
 
+.btn-secondary {
+  background-color: #757575;
+  margin-bottom: 15px;
+  display: inline-block;
+  width: auto;
+}
+
+.btn-secondary:hover {
+  background-color: #616161;
+}
+
 .tabs {
   display: flex;
   margin-bottom: 20px;
@@ -262,6 +273,180 @@ button:hover {
   display: none !important;
 }
 
+/* New styles for restaurant and menu */
+.restaurants-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.restaurant-card {
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: white;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.restaurant-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+.restaurant-card-content {
+  padding: 15px;
+}
+
+.restaurant-card h4 {
+  margin-bottom: 8px;
+}
+
+.restaurant-card p {
+  color: #666;
+  margin-bottom: 15px;
+}
+
+.restaurant-card .btn {
+  margin-top: 5px;
+}
+
+.menu-list {
+  margin-bottom: 30px;
+}
+
+.menu-category {
+  margin-bottom: 20px;
+}
+
+.menu-category h4 {
+  margin-bottom: 10px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid #eee;
+}
+
+.menu-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  background-color: #f9f9f9;
+  align-items: center;
+}
+
+.menu-item-info {
+  flex: 1;
+}
+
+.menu-item-name {
+  font-weight: 500;
+  margin-bottom: 5px;
+}
+
+.menu-item-description {
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.menu-item-price {
+  font-weight: 500;
+  color: #FF5722;
+  margin: 0 10px;
+}
+
+.menu-item-actions {
+  display: flex;
+  align-items: center;
+}
+
+.quantity-control {
+  display: flex;
+  align-items: center;
+  margin-right: 10px;
+}
+
+.quantity-btn {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  font-size: 1.2rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.quantity-display {
+  width: 30px;
+  text-align: center;
+  margin: 0 5px;
+}
+
+.add-to-cart-btn {
+  background-color: #4CAF50;
+}
+
+.add-to-cart-btn:hover {
+  background-color: #3e8e41;
+}
+
+#cart-items {
+  margin-bottom: 20px;
+}
+
+.cart-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+}
+
+.cart-item-name {
+  flex: 1;
+}
+
+.cart-item-quantity {
+  margin: 0 15px;
+  color: #757575;
+}
+
+.cart-item-price {
+  font-weight: 500;
+  margin: 0 15px;
+}
+
+.cart-item-total {
+  font-weight: 500;
+  color: #FF5722;
+  margin: 0 15px;
+}
+
+.cart-item-remove {
+  color: #D32F2F;
+  background: none;
+  padding: 0;
+  margin-left: 10px;
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+#cart-total {
+  background-color: #f5f5f5;
+  padding: 15px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+}
+
+#cart-total p {
+  font-size: 1.2rem;
+  font-weight: 500;
+  margin-bottom: 15px;
+}
+
+#cart-total-price {
+  color: #FF5722;
+}
+
 /* Make the map responsive */
 @media (max-width: 768px) {
   #map-container {
@@ -270,5 +455,20 @@ button:hover {
   
   #courier-map {
     height: 300px;
+  }
+  
+  .restaurants-list {
+    grid-template-columns: 1fr;
+  }
+  
+  .menu-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .menu-item-actions {
+    margin-top: 10px;
+    width: 100%;
+    justify-content: space-between;
   }
 }
