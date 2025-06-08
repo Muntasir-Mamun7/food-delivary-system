@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const path = require('path');
 const bodyParser = require('body-parser');
+const axios = require('axios');
 
 // Create Express app
 const app = express();
@@ -135,12 +136,16 @@ function initializeDatabase() {
           email: "burger@demo.com",
           password: "password123",
           address: "123 Xianlin Road, Nanjing, China",
+          image: "burger-paradise.jpg",
+          category: "Fast Food",
+          rating: 4.5,
+          deliveryTime: "25-35 min",
           menuItems: [
-            { name: "Classic Burger", description: "Beef patty with lettuce, tomato, and special sauce", price: 8.99, category: "Burgers" },
-            { name: "Cheeseburger", description: "Classic burger with American cheese", price: 9.99, category: "Burgers" },
-            { name: "Bacon Burger", description: "Classic burger with crispy bacon", price: 10.99, category: "Burgers" },
-            { name: "French Fries", description: "Crispy golden fries", price: 3.99, category: "Sides" },
-            { name: "Soft Drink", description: "Cola, sprite, or lemonade", price: 1.99, category: "Drinks" }
+            { name: "Classic Burger", description: "Beef patty with lettuce, tomato, and special sauce", price: 8.99, category: "Burgers", image_url: "classic-burger.jpg" },
+            { name: "Cheeseburger", description: "Classic burger with American cheese", price: 9.99, category: "Burgers", image_url: "cheeseburger.jpg" },
+            { name: "Bacon Burger", description: "Classic burger with crispy bacon", price: 10.99, category: "Burgers", image_url: "bacon-burger.jpg" },
+            { name: "French Fries", description: "Crispy golden fries", price: 3.99, category: "Sides", image_url: "french-fries.jpg" },
+            { name: "Soft Drink", description: "Cola, sprite, or lemonade", price: 1.99, category: "Drinks", image_url: "soft-drink.jpg" }
           ]
         },
         {
@@ -148,12 +153,16 @@ function initializeDatabase() {
           email: "pizza@demo.com",
           password: "password123",
           address: "456 Xianlin Ave, Nanjing, China",
+          image: "pizza-heaven.jpg",
+          category: "Italian",
+          rating: 4.7,
+          deliveryTime: "30-40 min",
           menuItems: [
-            { name: "Margherita Pizza", description: "Classic tomato and mozzarella", price: 12.99, category: "Pizzas" },
-            { name: "Pepperoni Pizza", description: "Pepperoni with mozzarella", price: 14.99, category: "Pizzas" },
-            { name: "Vegetarian Pizza", description: "Bell peppers, mushrooms, onions, and olives", price: 13.99, category: "Pizzas" },
-            { name: "Garlic Bread", description: "Toasted bread with garlic butter", price: 4.99, category: "Sides" },
-            { name: "Soda", description: "Various soft drinks", price: 1.99, category: "Drinks" }
+            { name: "Margherita Pizza", description: "Classic tomato and mozzarella", price: 12.99, category: "Pizzas", image_url: "margherita-pizza.jpg" },
+            { name: "Pepperoni Pizza", description: "Pepperoni with mozzarella", price: 14.99, category: "Pizzas", image_url: "pepperoni-pizza.jpg" },
+            { name: "Vegetarian Pizza", description: "Bell peppers, mushrooms, onions, and olives", price: 13.99, category: "Pizzas", image_url: "vegetarian-pizza.jpg" },
+            { name: "Garlic Bread", description: "Toasted bread with garlic butter", price: 4.99, category: "Sides", image_url: "garlic-bread.jpg" },
+            { name: "Soda", description: "Various soft drinks", price: 1.99, category: "Drinks", image_url: "soda.jpg" }
           ]
         },
         {
@@ -161,12 +170,50 @@ function initializeDatabase() {
           email: "sushi@demo.com",
           password: "password123",
           address: "789 Xianlin Blvd, Nanjing, China",
+          image: "sushi-express.jpg",
+          category: "Japanese",
+          rating: 4.8,
+          deliveryTime: "35-45 min",
           menuItems: [
-            { name: "California Roll", description: "Crab, avocado, and cucumber", price: 6.99, category: "Rolls" },
-            { name: "Spicy Tuna Roll", description: "Fresh tuna with spicy mayo", price: 7.99, category: "Rolls" },
-            { name: "Salmon Nigiri", description: "Fresh salmon over rice", price: 5.99, category: "Nigiri" },
-            { name: "Miso Soup", description: "Traditional Japanese soup", price: 2.99, category: "Sides" },
-            { name: "Green Tea", description: "Hot or iced", price: 1.99, category: "Drinks" }
+            { name: "California Roll", description: "Crab, avocado, and cucumber", price: 6.99, category: "Rolls", image_url: "california-roll.jpg" },
+            { name: "Spicy Tuna Roll", description: "Fresh tuna with spicy mayo", price: 7.99, category: "Rolls", image_url: "spicy-tuna-roll.jpg" },
+            { name: "Salmon Nigiri", description: "Fresh salmon over rice", price: 5.99, category: "Nigiri", image_url: "salmon-nigiri.jpg" },
+            { name: "Miso Soup", description: "Traditional Japanese soup", price: 2.99, category: "Sides", image_url: "miso-soup.jpg" },
+            { name: "Green Tea", description: "Hot or iced", price: 1.99, category: "Drinks", image_url: "green-tea.jpg" }
+          ]
+        },
+        {
+          name: "Noodle House",
+          email: "noodle@demo.com",
+          password: "password123",
+          address: "101 Xianlin North Road, Nanjing, China",
+          image: "noodle-house.jpg",
+          category: "Chinese",
+          rating: 4.6,
+          deliveryTime: "20-30 min",
+          menuItems: [
+            { name: "Beef Noodle Soup", description: "Slow-cooked beef with noodles in rich broth", price: 9.99, category: "Noodles", image_url: "beef-noodle.jpg" },
+            { name: "Dan Dan Noodles", description: "Spicy Sichuan noodles with minced pork", price: 8.99, category: "Noodles", image_url: "dandan-noodles.jpg" },
+            { name: "Vegetable Dumplings", description: "Steamed dumplings with mixed vegetables", price: 6.99, category: "Appetizers", image_url: "veg-dumplings.jpg" },
+            { name: "Spring Rolls", description: "Crispy rolls with vegetables", price: 4.99, category: "Appetizers", image_url: "spring-rolls.jpg" },
+            { name: "Jasmine Tea", description: "Traditional Chinese tea", price: 1.99, category: "Drinks", image_url: "jasmine-tea.jpg" }
+          ]
+        },
+        {
+          name: "Healthy Bites",
+          email: "healthy@demo.com",
+          password: "password123",
+          address: "222 University Road, Nanjing, China",
+          image: "healthy-bites.jpg",
+          category: "Healthy",
+          rating: 4.4,
+          deliveryTime: "25-35 min",
+          menuItems: [
+            { name: "Superfood Salad", description: "Kale, quinoa, avocado, and mixed seeds", price: 10.99, category: "Salads", image_url: "superfood-salad.jpg" },
+            { name: "Protein Bowl", description: "Grilled chicken, brown rice, and vegetables", price: 11.99, category: "Bowls", image_url: "protein-bowl.jpg" },
+            { name: "Avocado Toast", description: "Whole grain toast with avocado and poached egg", price: 8.99, category: "Breakfast", image_url: "avocado-toast.jpg" },
+            { name: "Fruit Smoothie", description: "Blended fresh fruits with yogurt", price: 5.99, category: "Drinks", image_url: "fruit-smoothie.jpg" },
+            { name: "Energy Bar", description: "Oats, nuts, and honey", price: 3.99, category: "Snacks", image_url: "energy-bar.jpg" }
           ]
         }
       ];
@@ -190,8 +237,8 @@ function initializeDatabase() {
 
               // Add menu items for this restaurant
               restaurant.menuItems.forEach(item => {
-                db.run(`INSERT INTO menu_items (restaurant_id, name, description, price, category) VALUES (?, ?, ?, ?, ?)`,
-                  [restaurantId, item.name, item.description, item.price, item.category]);
+                db.run(`INSERT INTO menu_items (restaurant_id, name, description, price, category, image_url) VALUES (?, ?, ?, ?, ?, ?)`,
+                  [restaurantId, item.name, item.description, item.price, item.category, item.image_url]);
               });
             });
         });
@@ -215,6 +262,46 @@ function initializeDatabase() {
 
         db.run(`INSERT INTO users (name, email, password, role, address) VALUES (?, ?, ?, ?, ?)`,
           ["Admin", "admin@admin.com", hash, "admin", "Admin Office"]);
+      });
+    }
+  });
+  
+  // Create a demo customer if it doesn't exist
+  db.get(`SELECT * FROM users WHERE email = ?`, ["customer@demo.com"], (err, row) => {
+    if (err) {
+      console.error('Error checking demo customer:', err);
+      return;
+    }
+
+    if (!row) {
+      bcrypt.hash("password123", 10, (err, hash) => {
+        if (err) {
+          console.error('Error hashing password:', err);
+          return;
+        }
+
+        db.run(`INSERT INTO users (name, email, password, role, address) VALUES (?, ?, ?, ?, ?)`,
+          ["Demo Customer", "customer@demo.com", hash, "customer", "123 Customer Street, Xianlin, Nanjing"]);
+      });
+    }
+  });
+  
+  // Create a demo courier if it doesn't exist
+  db.get(`SELECT * FROM users WHERE email = ?`, ["courier@demo.com"], (err, row) => {
+    if (err) {
+      console.error('Error checking demo courier:', err);
+      return;
+    }
+
+    if (!row) {
+      bcrypt.hash("password123", 10, (err, hash) => {
+        if (err) {
+          console.error('Error hashing password:', err);
+          return;
+        }
+
+        db.run(`INSERT INTO users (name, email, password, role, address) VALUES (?, ?, ?, ?, ?)`,
+          ["Demo Courier", "courier@demo.com", hash, "courier", "456 Courier Road, Xianlin, Nanjing"]);
       });
     }
   });
@@ -242,6 +329,17 @@ function authorize(roles = []) {
     }
     next();
   };
+}
+
+// Helper function for reverse geocoding
+async function reverseGeocode(lat, lng) {
+  try {
+    const response = await axios.get(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+    return response.data.display_name;
+  } catch (error) {
+    console.error('Reverse geocoding error:', error);
+    return null;
+  }
 }
 
 // Routes
@@ -351,6 +449,26 @@ app.get('/api/restaurants/:restaurantId/menu', authenticateToken, (req, res) => 
   });
 });
 
+// Reverse geocode coordinates
+app.get('/api/geocode/reverse', authenticateToken, async (req, res) => {
+  const { lat, lng } = req.query;
+  
+  if (!lat || !lng) {
+    return res.status(400).json({ message: 'Latitude and longitude are required' });
+  }
+  
+  try {
+    const address = await reverseGeocode(lat, lng);
+    if (address) {
+      res.json({ address });
+    } else {
+      res.status(404).json({ message: 'Address not found' });
+    }
+  } catch (error) {
+    res.status(500).json({ message: 'Geocoding service error' });
+  }
+});
+
 // CUSTOMER ROUTES
 
 // Create order (customer)
@@ -455,6 +573,47 @@ app.get('/api/orders/merchant', authenticateToken, authorize(['merchant']), (req
   );
 });
 
+// Get merchant dashboard stats
+app.get('/api/merchant/stats', authenticateToken, authorize(['merchant']), (req, res) => {
+  const stats = {};
+  
+  // Get total orders
+  db.get(`SELECT COUNT(*) as total FROM orders WHERE merchant_id = ?`, 
+    [req.user.id], 
+    (err, row) => {
+      if (err) return res.status(500).json({ message: 'Server error' });
+      stats.totalOrders = row.total;
+      
+      // Get orders by status
+      db.all(`SELECT status, COUNT(*) as count FROM orders 
+        WHERE merchant_id = ? 
+        GROUP BY status`, 
+        [req.user.id], 
+        (err, rows) => {
+          if (err) return res.status(500).json({ message: 'Server error' });
+          
+          stats.ordersByStatus = {};
+          rows.forEach(row => {
+            stats.ordersByStatus[row.status] = row.count;
+          });
+          
+          // Get total revenue
+          db.get(`SELECT SUM(total_price) as revenue FROM orders 
+            WHERE merchant_id = ?`, 
+            [req.user.id], 
+            (err, row) => {
+              if (err) return res.status(500).json({ message: 'Server error' });
+              stats.totalRevenue = row.revenue || 0;
+              
+              res.json(stats);
+            }
+          );
+        }
+      );
+    }
+  );
+});
+
 // COURIER ROUTES
 
 // Get available orders for couriers
@@ -483,25 +642,44 @@ app.put('/api/orders/:orderId/accept', authenticateToken, authorize(['courier'])
       if (err) return res.status(500).json({ message: 'Server error' });
       if (!row) return res.status(404).json({ message: 'Order not found or already assigned' });
       
-      // Calculate estimated delivery time (30 minutes from now for this example)
-      const now = new Date();
-      const estimatedTime = new Date(now.getTime() + 30 * 60000).toISOString();
-      
-      // Assign courier to order
-      db.run(`UPDATE orders SET 
-        courier_id = ?, 
-        status = 'accepted', 
-        estimated_delivery_time = ?
-        WHERE id = ?`, 
-        [req.user.id, estimatedTime, orderId], 
-        function(err) {
-          if (err) return res.status(500).json({ message: 'Error accepting order' });
-          if (this.changes === 0) return res.status(404).json({ message: 'Order not found' });
+      // Get current active orders for this courier to check if they can handle another
+      db.all(`SELECT * FROM orders 
+        WHERE courier_id = ? AND status IN ('accepted', 'out-for-delivery')`,
+        [req.user.id],
+        (err, activeOrders) => {
+          if (err) return res.status(500).json({ message: 'Server error' });
           
-          res.json({ 
-            message: 'Order accepted successfully',
-            estimatedDeliveryTime: estimatedTime
-          });
+          // Check if courier can handle this order based on time constraints
+          // This is where we would use the Dijkstra algorithm to determine feasibility
+          // For now, we'll implement a simple time check
+          
+          const dueTime = new Date(row.required_due_time).getTime();
+          const now = new Date().getTime();
+          const estimatedDeliveryTime = now + 30 * 60000; // 30 minutes from now
+          
+          if (estimatedDeliveryTime > dueTime) {
+            return res.status(400).json({ 
+              message: 'You cannot accept this order as you may not be able to deliver it on time'
+            });
+          }
+          
+          // Assign courier to order
+          db.run(`UPDATE orders SET 
+            courier_id = ?, 
+            status = 'accepted', 
+            estimated_delivery_time = ?
+            WHERE id = ?`, 
+            [req.user.id, new Date(estimatedDeliveryTime).toISOString(), orderId], 
+            function(err) {
+              if (err) return res.status(500).json({ message: 'Error accepting order' });
+              if (this.changes === 0) return res.status(404).json({ message: 'Order not found' });
+              
+              res.json({ 
+                message: 'Order accepted successfully',
+                estimatedDeliveryTime: new Date(estimatedDeliveryTime).toISOString()
+              });
+            }
+          );
         }
       );
     }
@@ -523,6 +701,52 @@ app.get('/api/orders/courier/active', authenticateToken, authorize(['courier']),
     (err, rows) => {
       if (err) return res.status(500).json({ message: 'Server error' });
       res.json(rows);
+    }
+  );
+});
+
+// Get courier dashboard stats
+app.get('/api/courier/stats', authenticateToken, authorize(['courier']), (req, res) => {
+  const stats = {};
+  
+  // Get total deliveries
+  db.get(`SELECT COUNT(*) as total FROM orders WHERE courier_id = ?`, 
+    [req.user.id], 
+    (err, row) => {
+      if (err) return res.status(500).json({ message: 'Server error' });
+      stats.totalDeliveries = row.total;
+      
+      // Get active deliveries
+      db.get(`SELECT COUNT(*) as active FROM orders 
+        WHERE courier_id = ? AND status IN ('accepted', 'out-for-delivery')`, 
+        [req.user.id], 
+        (err, row) => {
+          if (err) return res.status(500).json({ message: 'Server error' });
+          stats.activeDeliveries = row.active;
+          
+          // Get completed deliveries
+          db.get(`SELECT COUNT(*) as completed FROM orders 
+            WHERE courier_id = ? AND status = 'delivered'`, 
+            [req.user.id], 
+            (err, row) => {
+              if (err) return res.status(500).json({ message: 'Server error' });
+              stats.completedDeliveries = row.completed;
+              
+              // Get earnings (simplified - could be more complex in real app)
+              db.get(`SELECT SUM(total_price) * 0.1 as earnings FROM orders 
+                WHERE courier_id = ? AND status = 'delivered'`, 
+                [req.user.id], 
+                (err, row) => {
+                  if (err) return res.status(500).json({ message: 'Server error' });
+                  stats.totalEarnings = row.earnings || 0;
+                  
+                  res.json(stats);
+                }
+              );
+            }
+          );
+        }
+      );
     }
   );
 });
@@ -590,6 +814,45 @@ app.get('/api/admin/orders', authenticateToken, authorize(['admin']), (req, res)
     (err, rows) => {
       if (err) return res.status(500).json({ message: 'Server error' });
       res.json(rows);
+    }
+  );
+});
+
+// Get admin dashboard stats
+app.get('/api/admin/stats', authenticateToken, authorize(['admin']), (req, res) => {
+  const stats = {};
+  
+  // Get user counts by role
+  db.all(`SELECT role, COUNT(*) as count FROM users GROUP BY role`, 
+    (err, rows) => {
+      if (err) return res.status(500).json({ message: 'Server error' });
+      
+      stats.users = {};
+      rows.forEach(row => {
+        stats.users[row.role] = row.count;
+      });
+      
+      // Get order counts by status
+      db.all(`SELECT status, COUNT(*) as count FROM orders GROUP BY status`, 
+        (err, rows) => {
+          if (err) return res.status(500).json({ message: 'Server error' });
+          
+          stats.orders = {};
+          rows.forEach(row => {
+            stats.orders[row.status] = row.count;
+          });
+          
+          // Get total revenue
+          db.get(`SELECT SUM(total_price) as revenue FROM orders`, 
+            (err, row) => {
+              if (err) return res.status(500).json({ message: 'Server error' });
+              stats.totalRevenue = row.revenue || 0;
+              
+              res.json(stats);
+            }
+          );
+        }
+      );
     }
   );
 });
