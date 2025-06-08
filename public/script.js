@@ -30,6 +30,65 @@ document.addEventListener('DOMContentLoaded', function() {
   let cartItems = [];
   let cartTotal = 0;
   
+  // Demo restaurant data
+  const demoRestaurants = [
+    {
+      id: 1,
+      name: "Burger Paradise",
+      address: "123 Xianlin Road, Nanjing, China",
+      image: "https://images.unsplash.com/photo-1571091718767-18b5b1457add?ixlib=rb-1.2.1&auto=format&fit=crop&w=1050&q=80",
+      logo: "https://via.placeholder.com/70x70",
+      category: "Fast Food",
+      rating: 4.5,
+      deliveryTime: "25-35 min",
+      tags: ["Burgers", "American", "Fast Food"]
+    },
+    {
+      id: 2,
+      name: "Pizza Heaven",
+      address: "456 Xianlin Ave, Nanjing, China",
+      image: "https://images.unsplash.com/photo-1513104890138-7c749659a591?ixlib=rb-1.2.1&auto=format&fit=crop&w=1050&q=80",
+      logo: "https://via.placeholder.com/70x70",
+      category: "Italian",
+      rating: 4.7,
+      deliveryTime: "30-40 min",
+      tags: ["Pizza", "Italian", "Pasta"]
+    },
+    {
+      id: 3,
+      name: "Sushi Express",
+      address: "789 Xianlin Blvd, Nanjing, China",
+      image: "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?ixlib=rb-1.2.1&auto=format&fit=crop&w=1050&q=80",
+      logo: "https://via.placeholder.com/70x70",
+      category: "Japanese",
+      rating: 4.8,
+      deliveryTime: "35-45 min",
+      tags: ["Sushi", "Japanese", "Asian"]
+    },
+    {
+      id: 4,
+      name: "Noodle House",
+      address: "101 Xianlin North Road, Nanjing, China",
+      image: "https://images.unsplash.com/photo-1552611052-33e04de081de?ixlib=rb-1.2.1&auto=format&fit=crop&w=1050&q=80",
+      logo: "https://via.placeholder.com/70x70",
+      category: "Chinese",
+      rating: 4.6,
+      deliveryTime: "20-30 min",
+      tags: ["Noodles", "Chinese", "Dumplings"]
+    },
+    {
+      id: 5,
+      name: "Healthy Bites",
+      address: "222 University Road, Nanjing, China",
+      image: "https://images.unsplash.com/photo-1490645935967-10de6ba17061?ixlib=rb-1.2.1&auto=format&fit=crop&w=1050&q=80",
+      logo: "https://via.placeholder.com/70x70",
+      category: "Healthy",
+      rating: 4.4,
+      deliveryTime: "25-35 min",
+      tags: ["Salad", "Healthy", "Vegan"]
+    }
+  ];
+  
   // DOM Elements
   const loginForm = document.getElementById('form-login');
   const registerForm = document.getElementById('form-register');
@@ -43,7 +102,32 @@ document.addEventListener('DOMContentLoaded', function() {
   const formContainers = document.querySelectorAll('.form-container');
   const dashboards = document.querySelectorAll('.user-dashboard');
   
-  // Tab switching
+  // Initialize dashboard navigation
+  function initDashboardNav() {
+    const dashboardNavLinks = document.querySelectorAll('.nav-menu li');
+    
+    dashboardNavLinks.forEach(link => {
+      link.addEventListener('click', function() {
+        const sectionId = this.getAttribute('data-section');
+        const sections = document.querySelectorAll('.dashboard-section');
+        
+        // Update active link
+        dashboardNavLinks.forEach(l => l.classList.remove('active'));
+        this.classList.add('active');
+        
+        // Show corresponding section
+        sections.forEach(section => {
+          if (section.id === sectionId) {
+            section.classList.add('active');
+          } else {
+            section.classList.remove('active');
+          }
+        });
+      });
+    });
+  }
+  
+  // Tab switching for auth forms
   tabButtons.forEach(button => {
     button.addEventListener('click', function() {
       const tabName = this.getAttribute('data-tab');
@@ -160,6 +244,14 @@ document.addEventListener('DOMContentLoaded', function() {
     userName.textContent = currentUser.name;
     userRole.textContent = currentUser.role;
     
+    // Initialize dashboard navigation
+    initDashboardNav();
+    
+    // Set name in role-specific header
+    if (document.getElementById(`${currentUser.role}-name`)) {
+      document.getElementById(`${currentUser.role}-name`).textContent = currentUser.name;
+    }
+    
     // Hide auth forms, show dashboard
     authContainer.classList.add('hidden');
     dashboardContainer.classList.remove('hidden');
@@ -233,18 +325,35 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
   
-  // Merchant Dashboard
+  // Reverse geocode coordinates
+  async function reverseGeocode(lat, lng) {
+    try {
+      const response = await apiCall(`/api/geocode/reverse?lat=${lat}&lng=${lng}`);
+      return response.address;
+    } catch (error) {
+      console.error('Reverse geocoding error:', error);
+      return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+    }
+  }
+  
+  // Merchant Dashboard Functions
   function loadMerchantDashboard() {
+    // Load merchant statistics
+    loadMerchantStats();
+    
     // Load merchant orders
     loadMerchantOrders();
+    
+    // Initialize merchant map
+    initializeMerchantMap();
+    
+    // Calculate order total
+    updateOrderTotal();
     
     // Setup order creation form
     const createOrderForm = document.getElementById('create-order-form');
     const addItemBtn = document.getElementById('add-item-btn');
     const orderItemsContainer = document.getElementById('order-items');
-    
-    // Initialize merchant map
-    initializeMerchantMap();
     
     // Add new item row
     addItemBtn.addEventListener('click', function() {
@@ -254,7 +363,7 @@ document.addEventListener('DOMContentLoaded', function() {
         <input type="text" placeholder="Item name" class="item-name" required>
         <input type="number" placeholder="Price" class="item-price" step="0.01" required>
         <input type="number" placeholder="Quantity" class="item-quantity" min="1" value="1" required>
-        <button type="button" class="remove-item">Remove</button>
+        <button type="button" class="remove-item"><i class="fas fa-trash"></i></button>
       `;
       
       orderItemsContainer.appendChild(itemRow);
@@ -262,7 +371,20 @@ document.addEventListener('DOMContentLoaded', function() {
       // Setup remove button
       itemRow.querySelector('.remove-item').addEventListener('click', function() {
         itemRow.remove();
+        updateOrderTotal();
       });
+      
+      // Add change listeners for price and quantity
+      const priceInput = itemRow.querySelector('.item-price');
+      const quantityInput = itemRow.querySelector('.item-quantity');
+      
+      priceInput.addEventListener('input', updateOrderTotal);
+      quantityInput.addEventListener('input', updateOrderTotal);
+    });
+    
+    // Add change listeners for existing items
+    document.querySelectorAll('.item-price, .item-quantity').forEach(input => {
+      input.addEventListener('input', updateOrderTotal);
     });
     
     // Submit order form
@@ -313,8 +435,9 @@ document.addEventListener('DOMContentLoaded', function() {
           deliveryMarker = null;
         }
         
-        document.getElementById('delivery-lat').textContent = '0';
-        document.getElementById('delivery-lng').textContent = '0';
+        document.getElementById('delivery-address-display').textContent = 'None selected';
+        document.getElementById('delivery-lat').value = '0';
+        document.getElementById('delivery-lng').value = '0';
         selectedDeliveryLat = DEFAULT_LAT;
         selectedDeliveryLng = DEFAULT_LNG;
         
@@ -331,7 +454,12 @@ document.addEventListener('DOMContentLoaded', function() {
           firstItemRow.querySelector('.item-quantity').value = '1';
         }
         
+        // Update order total
+        updateOrderTotal();
+        
+        // Reload orders and stats
         loadMerchantOrders();
+        loadMerchantStats();
         
         alert('Order created successfully!');
         
@@ -339,6 +467,129 @@ document.addEventListener('DOMContentLoaded', function() {
         alert(`Error creating order: ${error.message}`);
       }
     });
+    
+    // Handle order status filter
+    const statusFilter = document.getElementById('order-status-filter');
+    if (statusFilter) {
+      statusFilter.addEventListener('change', function() {
+        const status = this.value;
+        const orders = document.querySelectorAll('.order-card');
+        
+        orders.forEach(order => {
+          const orderStatus = order.getAttribute('data-status');
+          if (status === 'all' || orderStatus === status) {
+            order.style.display = 'block';
+          } else {
+            order.style.display = 'none';
+          }
+        });
+      });
+    }
+    
+    // Handle order search
+    const orderSearch = document.getElementById('order-search');
+    const orderSearchBtn = document.getElementById('order-search-btn');
+    
+    if (orderSearch && orderSearchBtn) {
+      orderSearchBtn.addEventListener('click', function() {
+        searchOrders(orderSearch.value);
+      });
+      
+      orderSearch.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+          searchOrders(this.value);
+        }
+      });
+    }
+  }
+  
+  function searchOrders(query) {
+    query = query.toLowerCase();
+    const orders = document.querySelectorAll('.order-card');
+    
+    orders.forEach(order => {
+      const text = order.textContent.toLowerCase();
+      if (text.includes(query) || query === '') {
+        order.style.display = 'block';
+      } else {
+        order.style.display = 'none';
+      }
+    });
+  }
+  
+  function updateOrderTotal() {
+    let total = 0;
+    const items = document.querySelectorAll('.order-item');
+    
+    items.forEach(item => {
+      const price = parseFloat(item.querySelector('.item-price').value) || 0;
+      const quantity = parseInt(item.querySelector('.item-quantity').value) || 0;
+      total += price * quantity;
+    });
+    
+    document.getElementById('order-total').textContent = total.toFixed(2);
+  }
+  
+  async function loadMerchantStats() {
+    try {
+      const stats = await apiCall('/api/merchant/stats');
+      
+      // Update dashboard stats
+      document.getElementById('total-orders').textContent = stats.totalOrders || 0;
+      document.getElementById('pending-orders').textContent = stats.ordersByStatus?.pending || 0;
+      document.getElementById('in-delivery-orders').textContent = 
+        (stats.ordersByStatus?.accepted || 0) + (stats.ordersByStatus?.['out-for-delivery'] || 0);
+      document.getElementById('total-revenue').textContent = `$${(stats.totalRevenue || 0).toFixed(2)}`;
+      
+      // Load recent orders for the overview section
+      loadRecentOrders();
+      
+    } catch (error) {
+      console.error('Error loading merchant stats:', error);
+    }
+  }
+  
+  async function loadRecentOrders() {
+    try {
+      const orders = await apiCall('/api/orders/merchant');
+      const recentOrdersList = document.getElementById('recent-orders');
+      
+      // Display only the 5 most recent orders
+      const recentOrders = orders.slice(0, 5);
+      
+      if (recentOrders.length === 0) {
+        recentOrdersList.innerHTML = '<p>No orders found.</p>';
+        return;
+      }
+      
+      recentOrdersList.innerHTML = '';
+      
+      recentOrders.forEach(order => {
+        const orderCard = document.createElement('div');
+        orderCard.className = 'order-card';
+        
+        // Format date
+        const orderDate = new Date(order.created_at);
+        const formattedDate = orderDate.toLocaleString();
+        
+        orderCard.innerHTML = `
+          <h4>Order #${order.id}</h4>
+          <div class="order-card-details">
+            <p><strong>Customer:</strong> ${order.customer_name}</p>
+            <p><strong>Created:</strong> ${formattedDate}</p>
+            <p><strong>Status:</strong> <span class="order-status status-${order.status}">${order.status}</span></p>
+            <p><strong>Total:</strong> $${order.total_price.toFixed(2)}</p>
+          </div>
+        `;
+        
+        recentOrdersList.appendChild(orderCard);
+      });
+      
+    } catch (error) {
+      console.error('Error loading recent orders:', error);
+      document.getElementById('recent-orders').innerHTML = 
+        `<p class="error-message">Error loading orders: ${error.message}</p>`;
+    }
   }
   
   function initializeMerchantMap() {
@@ -355,7 +606,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }).addTo(merchantMap);
     
     // Add click handler to set delivery location
-    merchantMap.on('click', function(e) {
+    merchantMap.on('click', async function(e) {
       // Remove previous marker if exists
       if (deliveryMarker) {
         merchantMap.removeLayer(deliveryMarker);
@@ -369,16 +620,26 @@ document.addEventListener('DOMContentLoaded', function() {
       selectedDeliveryLat = e.latlng.lat;
       selectedDeliveryLng = e.latlng.lng;
       
-      // Update display
-      document.getElementById('delivery-lat').textContent = selectedDeliveryLat.toFixed(6);
-      document.getElementById('delivery-lng').textContent = selectedDeliveryLng.toFixed(6);
+      // Update form fields
+      document.getElementById('delivery-lat').value = selectedDeliveryLat;
+      document.getElementById('delivery-lng').value = selectedDeliveryLng;
+      
+      // Try to get address from coordinates
+      try {
+        const address = await reverseGeocode(selectedDeliveryLat, selectedDeliveryLng);
+        document.getElementById('delivery-address-display').textContent = address;
+        document.getElementById('delivery-address').value = address;
+      } catch (error) {
+        document.getElementById('delivery-address-display').textContent = 
+          `${selectedDeliveryLat.toFixed(6)}, ${selectedDeliveryLng.toFixed(6)}`;
+      }
     });
   }
   
   async function loadMerchantOrders() {
     try {
       const orders = await apiCall('/api/orders/merchant');
-      const ordersList = document.getElementById('merchant-orders');
+      const ordersList = document.getElementById('merchant-orders-list');
       
       if (orders.length === 0) {
         ordersList.innerHTML = '<p>No orders found.</p>';
@@ -390,20 +651,26 @@ document.addEventListener('DOMContentLoaded', function() {
       orders.forEach(order => {
         const orderCard = document.createElement('div');
         orderCard.className = 'order-card';
+        orderCard.setAttribute('data-status', order.status);
+        
+        // Format dates
+        const createdDate = new Date(order.created_at).toLocaleString();
+        const requiredDate = new Date(order.required_due_time).toLocaleString();
         
         orderCard.innerHTML = `
           <h4>Order #${order.id}</h4>
           <div class="order-card-details">
             <p><strong>Customer:</strong> ${order.customer_name}</p>
             <p><strong>Delivery Address:</strong> ${order.delivery_address}</p>
-            <p><strong>Required By:</strong> ${new Date(order.required_due_time).toLocaleString()}</p>
-            <p><strong>Status:</strong> ${order.status}</p>
+            <p><strong>Created:</strong> ${createdDate}</p>
+            <p><strong>Required By:</strong> ${requiredDate}</p>
+            <p><strong>Status:</strong> <span class="order-status status-${order.status}">${order.status}</span></p>
             <p><strong>Total Price:</strong> $${order.total_price.toFixed(2)}</p>
             ${order.courier_name ? `<p><strong>Courier:</strong> ${order.courier_name}</p>` : ''}
           </div>
           <div class="order-card-actions">
             ${order.status === 'pending' || order.status === 'preparing' ? 
-              `<button class="update-status" data-id="${order.id}" data-status="cancelled">Cancel Order</button>` : ''}
+              `<button class="update-status" data-id="${order.id}" data-status="cancelled"><i class="fas fa-times"></i> Cancel Order</button>` : ''}
           </div>
         `;
         
@@ -419,6 +686,7 @@ document.addEventListener('DOMContentLoaded', function() {
           try {
             await apiCall(`/api/orders/${orderId}/status`, 'PUT', { status });
             loadMerchantOrders();
+            loadMerchantStats();
           } catch (error) {
             alert(`Error updating order: ${error.message}`);
           }
@@ -427,13 +695,16 @@ document.addEventListener('DOMContentLoaded', function() {
       
     } catch (error) {
       console.error('Error loading merchant orders:', error);
-      document.getElementById('merchant-orders').innerHTML = 
+      document.getElementById('merchant-orders-list').innerHTML = 
         `<p class="error-message">Error loading orders: ${error.message}</p>`;
     }
   }
   
-  // Courier Dashboard
+  // Courier Dashboard Functions
   function loadCourierDashboard() {
+    // Load courier stats
+    loadCourierStats();
+    
     // Initialize map first
     setupMap();
     
@@ -456,6 +727,35 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 30000);
   }
   
+  async function loadCourierStats() {
+    try {
+      const stats = await apiCall('/api/courier/stats');
+      
+      // Update dashboard stats
+      document.getElementById('active-deliveries').textContent = stats.activeDeliveries || 0;
+      document.getElementById('completed-deliveries').textContent = stats.completedDeliveries || 0;
+      document.getElementById('total-deliveries').textContent = stats.totalDeliveries || 0;
+      document.getElementById('total-earnings').textContent = `$${(stats.totalEarnings || 0).toFixed(2)}`;
+      
+      // Update courier status badge
+      const statusBadge = document.getElementById('courier-status');
+      if (statusBadge) {
+        if (stats.activeDeliveries > 0) {
+          statusBadge.textContent = 'Busy';
+          statusBadge.className = 'status-badge busy';
+          statusBadge.nextElementSibling.textContent = 'You are currently delivering orders.';
+        } else {
+          statusBadge.textContent = 'Available';
+          statusBadge.className = 'status-badge available';
+          statusBadge.nextElementSibling.textContent = 'You are currently available for new deliveries.';
+        }
+      }
+      
+    } catch (error) {
+      console.error('Error loading courier stats:', error);
+    }
+  }
+  
   async function loadAvailableOrders() {
     try {
       availableOrders = await apiCall('/api/orders/available');
@@ -472,6 +772,13 @@ document.addEventListener('DOMContentLoaded', function() {
         const orderCard = document.createElement('div');
         orderCard.className = 'order-card';
         
+        // Calculate if order can be delivered on time (simplified)
+        const dueTime = new Date(order.required_due_time).getTime();
+        const now = new Date().getTime();
+        const timeLeft = Math.floor((dueTime - now) / (1000 * 60)); // Minutes left
+        
+        const isUrgent = timeLeft < 45; // Less than 45 minutes is considered urgent
+        
         orderCard.innerHTML = `
           <h4>Order #${order.id}</h4>
           <div class="order-card-details">
@@ -479,10 +786,15 @@ document.addEventListener('DOMContentLoaded', function() {
             <p><strong>Pickup Address:</strong> ${order.merchant_address}</p>
             <p><strong>Delivery Address:</strong> ${order.delivery_address}</p>
             <p><strong>Required By:</strong> ${new Date(order.required_due_time).toLocaleString()}</p>
+            <p><strong>Time Left:</strong> <span style="color: ${isUrgent ? 'red' : 'green'}; font-weight: bold;">
+              ${timeLeft} minutes
+            </span></p>
             <p><strong>Total Price:</strong> $${order.total_price.toFixed(2)}</p>
           </div>
           <div class="order-card-actions">
-            <button class="accept-order" data-id="${order.id}">Accept Order</button>
+            <button class="accept-order" data-id="${order.id}">
+              <i class="fas fa-check-circle"></i> Accept Order
+            </button>
           </div>
         `;
         
@@ -498,6 +810,7 @@ document.addEventListener('DOMContentLoaded', function() {
             await apiCall(`/api/orders/${orderId}/accept`, 'PUT');
             loadAvailableOrders();
             loadActiveOrders();
+            loadCourierStats();
             showAvailableOrdersOnMap(); // Update available orders on map
             loadActiveOrdersWithLocations(); // Refresh map after accepting an order
           } catch (error) {
@@ -557,6 +870,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 marker.closePopup();
                 loadAvailableOrders();
                 loadActiveOrders();
+                loadCourierStats();
                 loadActiveOrdersWithLocations();
               } catch (error) {
                 alert(`Error accepting order: ${error.message}`);
@@ -634,6 +948,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const orderCard = document.createElement('div');
         orderCard.className = 'order-card';
         
+        // Format times
+        const requiredByTime = new Date(order.required_due_time).toLocaleString();
+        const estimatedTime = order.estimated_delivery_time ? 
+          new Date(order.estimated_delivery_time).toLocaleTimeString() : 'N/A';
+        
         orderCard.innerHTML = `
           <h4>Order #${order.id}</h4>
           <div class="order-card-details">
@@ -641,14 +960,19 @@ document.addEventListener('DOMContentLoaded', function() {
             <p><strong>Pickup Address:</strong> ${order.merchant_address}</p>
             <p><strong>Customer:</strong> ${order.customer_name}</p>
             <p><strong>Delivery Address:</strong> ${order.delivery_address}</p>
-            <p><strong>Required By:</strong> ${new Date(order.required_due_time).toLocaleString()}</p>
-            <p><strong>Status:</strong> ${order.status}</p>
+            <p><strong>Required By:</strong> ${requiredByTime}</p>
+            <p><strong>Estimated Delivery:</strong> ${estimatedTime}</p>
+            <p><strong>Status:</strong> <span class="order-status status-${order.status}">${order.status}</span></p>
           </div>
           <div class="order-card-actions">
             ${order.status === 'accepted' ? 
-              `<button class="update-status" data-id="${order.id}" data-status="out-for-delivery">Start Delivery</button>` : ''}
+              `<button class="update-status" data-id="${order.id}" data-status="out-for-delivery">
+                <i class="fas fa-truck"></i> Start Delivery
+              </button>` : ''}
             ${order.status === 'out-for-delivery' ? 
-              `<button class="update-status" data-id="${order.id}" data-status="delivered">Mark as Delivered</button>` : ''}
+              `<button class="update-status" data-id="${order.id}" data-status="delivered">
+                <i class="fas fa-check-circle"></i> Mark as Delivered
+              </button>` : ''}
           </div>
         `;
         
@@ -664,6 +988,7 @@ document.addEventListener('DOMContentLoaded', function() {
           try {
             await apiCall(`/api/orders/${orderId}/status`, 'PUT', { status });
             loadActiveOrders();
+            loadCourierStats();
             loadActiveOrdersWithLocations(); // Refresh map when order status changes
           } catch (error) {
             alert(`Error updating order: ${error.message}`);
@@ -678,10 +1003,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
   
-  // Customer Dashboard
+  // Customer Dashboard Functions
   function loadCustomerDashboard() {
     // Load restaurants
-    loadRestaurants();
+    displayRestaurants();
     
     // Load customer orders
     loadCustomerOrders();
@@ -691,6 +1016,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (backToRestaurantsBtn) {
       backToRestaurantsBtn.addEventListener('click', function() {
         document.getElementById('restaurant-menu-section').classList.add('hidden');
+        document.getElementById('customer-restaurants').classList.add('active');
         currentRestaurant = null;
         resetCart();
       });
@@ -701,54 +1027,150 @@ document.addEventListener('DOMContentLoaded', function() {
     if (placeOrderBtn) {
       placeOrderBtn.addEventListener('click', placeOrder);
     }
+    
+    // Set up category filtering
+    const categoryButtons = document.querySelectorAll('.category-btn');
+    categoryButtons.forEach(button => {
+      button.addEventListener('click', function() {
+        const category = this.getAttribute('data-category');
+        
+        // Update active button
+        categoryButtons.forEach(btn => btn.classList.remove('active'));
+        this.classList.add('active');
+        
+        // Filter restaurants
+        filterRestaurants(category);
+      });
+    });
+    
+    // Set up search functionality
+    const searchInput = document.getElementById('restaurant-search');
+    const searchButton = document.getElementById('restaurant-search-btn');
+    
+    if (searchInput && searchButton) {
+      searchButton.addEventListener('click', function() {
+        searchRestaurants(searchInput.value);
+      });
+      
+      searchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+          searchRestaurants(this.value);
+        }
+      });
+    }
+    
+    // Set up order status tabs
+    const statusTabs = document.querySelectorAll('.status-tab');
+    statusTabs.forEach(tab => {
+      tab.addEventListener('click', function() {
+        const status = this.getAttribute('data-status');
+        
+        // Update active tab
+        statusTabs.forEach(t => t.classList.remove('active'));
+        this.classList.add('active');
+        
+        // Filter orders by status
+        filterOrdersByStatus(status);
+      });
+    });
   }
   
-  async function loadRestaurants() {
-    try {
-      const restaurants = await apiCall('/api/restaurants');
-      const restaurantsList = document.getElementById('customer-restaurants');
-      
-      if (restaurants.length === 0) {
-        restaurantsList.innerHTML = '<p>No restaurants found.</p>';
-        return;
+  function filterOrdersByStatus(status) {
+    const orders = document.querySelectorAll('.customer-order');
+    
+    orders.forEach(order => {
+      const orderStatus = order.getAttribute('data-status');
+      if (status === 'all' || orderStatus === status) {
+        order.style.display = 'block';
+      } else {
+        order.style.display = 'none';
       }
+    });
+  }
+  
+  function searchRestaurants(query) {
+    query = query.toLowerCase();
+    const restaurants = document.querySelectorAll('.restaurant-card');
+    
+    restaurants.forEach(restaurant => {
+      const name = restaurant.querySelector('h4').textContent.toLowerCase();
+      const tags = Array.from(restaurant.querySelectorAll('.restaurant-tag'))
+        .map(tag => tag.textContent.toLowerCase());
       
-      restaurantsList.innerHTML = '';
+      if (name.includes(query) || tags.some(tag => tag.includes(query)) || query === '') {
+        restaurant.style.display = 'block';
+      } else {
+        restaurant.style.display = 'none';
+      }
+    });
+  }
+  
+  function filterRestaurants(category) {
+    const restaurants = document.querySelectorAll('.restaurant-card');
+    
+    restaurants.forEach(restaurant => {
+      if (category === 'all' || restaurant.getAttribute('data-category') === category) {
+        restaurant.style.display = 'block';
+      } else {
+        restaurant.style.display = 'none';
+      }
+    });
+  }
+  
+  function displayRestaurants() {
+    const restaurantContainer = document.getElementById('customer-restaurants-list');
+    if (!restaurantContainer) return;
+    
+    restaurantContainer.innerHTML = '';
+    
+    demoRestaurants.forEach(restaurant => {
+      const restaurantCard = document.createElement('div');
+      restaurantCard.className = 'restaurant-card';
+      restaurantCard.setAttribute('data-category', restaurant.category);
       
-      restaurants.forEach(restaurant => {
-        const restaurantCard = document.createElement('div');
-        restaurantCard.className = 'restaurant-card';
-        
-        restaurantCard.innerHTML = `
-          <div class="restaurant-card-content">
-            <h4>${restaurant.name}</h4>
-            <p>${restaurant.address}</p>
-            <button class="view-menu-btn btn" data-id="${restaurant.id}" data-name="${restaurant.name}">View Menu</button>
+      restaurantCard.innerHTML = `
+        <div class="restaurant-banner" style="background-image: url('${restaurant.image}')"></div>
+        <div class="restaurant-logo" style="background-image: url('${restaurant.logo}')"></div>
+        <div class="restaurant-details">
+          <h4>${restaurant.name}</h4>
+          <div class="restaurant-meta">
+            <div class="restaurant-rating">
+              <i class="fas fa-star"></i> ${restaurant.rating}
+            </div>
+            <div class="restaurant-delivery">
+              <i class="fas fa-clock"></i> ${restaurant.deliveryTime}
+            </div>
           </div>
-        `;
+          <div class="restaurant-tags">
+            ${restaurant.tags.map(tag => `<span class="restaurant-tag">${tag}</span>`).join('')}
+          </div>
+          <button class="view-menu-btn btn" data-id="${restaurant.id}" data-name="${restaurant.name}">
+            <i class="fas fa-utensils"></i> View Menu
+          </button>
+        </div>
+      `;
+      
+      restaurantContainer.appendChild(restaurantCard);
+    });
+    
+    // Add event listeners to buttons
+    document.querySelectorAll('.view-menu-btn').forEach(button => {
+      button.addEventListener('click', function() {
+        const restaurantId = this.getAttribute('data-id');
+        const restaurantName = this.getAttribute('data-name');
+        loadRestaurantMenu(restaurantId, restaurantName);
         
-        restaurantsList.appendChild(restaurantCard);
+        // Hide restaurants section, show menu section
+        document.getElementById('customer-restaurants').classList.remove('active');
+        document.getElementById('restaurant-menu-section').classList.remove('hidden');
       });
-      
-      // Add event listeners to buttons
-      document.querySelectorAll('.view-menu-btn').forEach(button => {
-        button.addEventListener('click', function() {
-          const restaurantId = this.getAttribute('data-id');
-          const restaurantName = this.getAttribute('data-name');
-          loadRestaurantMenu(restaurantId, restaurantName);
-        });
-      });
-      
-    } catch (error) {
-      console.error('Error loading restaurants:', error);
-      document.getElementById('customer-restaurants').innerHTML = 
-        `<p class="error-message">Error loading restaurants: ${error.message}</p>`;
-    }
+    });
   }
   
   async function loadRestaurantMenu(restaurantId, restaurantName) {
     try {
-      const menuItems = await apiCall(`/api/restaurants/${restaurantId}/menu`);
+      // For demo, we'll use static data instead of an API call
+      const menuItems = getRestaurantMenu(restaurantId);
       const menuContainer = document.getElementById('restaurant-menu');
       const menuSection = document.getElementById('restaurant-menu-section');
       const restaurantNameElement = document.getElementById('restaurant-name');
@@ -768,10 +1190,7 @@ document.addEventListener('DOMContentLoaded', function() {
       // Update restaurant name
       restaurantNameElement.textContent = restaurantName;
       
-      // Show menu section, hide restaurants list
-      menuSection.classList.remove('hidden');
-      
-      if (menuItems.length === 0) {
+      if (!menuItems || menuItems.length === 0) {
         menuContainer.innerHTML = '<p>No menu items available.</p>';
         return;
       }
@@ -807,7 +1226,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 <button class="add-to-cart-btn" 
                   data-id="${item.id}" 
                   data-name="${item.name}" 
-                  data-price="${item.price}">Add to Cart</button>
+                  data-price="${item.price}">
+                  <i class="fas fa-plus"></i> Add to Cart
+                </button>
               </div>
             </div>
           `;
@@ -839,6 +1260,43 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
   
+  // Demo function to get menu for a restaurant
+  function getRestaurantMenu(restaurantId) {
+    const menuItems = [
+      { id: 1, restaurantId: 1, name: "Classic Burger", description: "Beef patty with lettuce, tomato, and special sauce", price: 8.99, category: "Burgers" },
+      { id: 2, restaurantId: 1, name: "Cheeseburger", description: "Classic burger with American cheese", price: 9.99, category: "Burgers" },
+      { id: 3, restaurantId: 1, name: "Bacon Burger", description: "Classic burger with crispy bacon", price: 10.99, category: "Burgers" },
+      { id: 4, restaurantId: 1, name: "French Fries", description: "Crispy golden fries", price: 3.99, category: "Sides" },
+      { id: 5, restaurantId: 1, name: "Soft Drink", description: "Cola, sprite, or lemonade", price: 1.99, category: "Drinks" },
+      
+      { id: 6, restaurantId: 2, name: "Margherita Pizza", description: "Classic tomato and mozzarella", price: 12.99, category: "Pizzas" },
+      { id: 7, restaurantId: 2, name: "Pepperoni Pizza", description: "Pepperoni with mozzarella", price: 14.99, category: "Pizzas" },
+      { id: 8, restaurantId: 2, name: "Vegetarian Pizza", description: "Bell peppers, mushrooms, onions, and olives", price: 13.99, category: "Pizzas" },
+      { id: 9, restaurantId: 2, name: "Garlic Bread", description: "Toasted bread with garlic butter", price: 4.99, category: "Sides" },
+      { id: 10, restaurantId: 2, name: "Soda", description: "Various soft drinks", price: 1.99, category: "Drinks" },
+      
+      { id: 11, restaurantId: 3, name: "California Roll", description: "Crab, avocado, and cucumber", price: 6.99, category: "Rolls" },
+      { id: 12, restaurantId: 3, name: "Spicy Tuna Roll", description: "Fresh tuna with spicy mayo", price: 7.99, category: "Rolls" },
+      { id: 13, restaurantId: 3, name: "Salmon Nigiri", description: "Fresh salmon over rice", price: 5.99, category: "Nigiri" },
+      { id: 14, restaurantId: 3, name: "Miso Soup", description: "Traditional Japanese soup", price: 2.99, category: "Sides" },
+      { id: 15, restaurantId: 3, name: "Green Tea", description: "Hot or iced", price: 1.99, category: "Drinks" },
+      
+      { id: 16, restaurantId: 4, name: "Beef Noodle Soup", description: "Slow-cooked beef with noodles in rich broth", price: 9.99, category: "Noodles" },
+      { id: 17, restaurantId: 4, name: "Dan Dan Noodles", description: "Spicy Sichuan noodles with minced pork", price: 8.99, category: "Noodles" },
+      { id: 18, restaurantId: 4, name: "Vegetable Dumplings", description: "Steamed dumplings with mixed vegetables", price: 6.99, category: "Appetizers" },
+      { id: 19, restaurantId: 4, name: "Spring Rolls", description: "Crispy rolls with vegetables", price: 4.99, category: "Appetizers" },
+      { id: 20, restaurantId: 4, name: "Jasmine Tea", description: "Traditional Chinese tea", price: 1.99, category: "Drinks" },
+      
+      { id: 21, restaurantId: 5, name: "Superfood Salad", description: "Kale, quinoa, avocado, and mixed seeds", price: 10.99, category: "Salads" },
+      { id: 22, restaurantId: 5, name: "Protein Bowl", description: "Grilled chicken, brown rice, and vegetables", price: 11.99, category: "Bowls" },
+      { id: 23, restaurantId: 5, name: "Avocado Toast", description: "Whole grain toast with avocado and poached egg", price: 8.99, category: "Breakfast" },
+      { id: 24, restaurantId: 5, name: "Fruit Smoothie", description: "Blended fresh fruits with yogurt", price: 5.99, category: "Drinks" },
+      { id: 25, restaurantId: 5, name: "Energy Bar", description: "Oats, nuts, and honey", price: 3.99, category: "Snacks" }
+    ];
+    
+    return menuItems.filter(item => item.restaurantId == restaurantId);
+  }
+  
   function initializeCustomerMap() {
     const mapElement = document.getElementById('customer-map');
     if (!mapElement) return;
@@ -853,7 +1311,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }).addTo(customerMap);
     
     // Add click handler to set delivery location
-    customerMap.on('click', function(e) {
+    customerMap.on('click', async function(e) {
       // Remove previous marker if exists
       if (customerDeliveryMarker) {
         customerMap.removeLayer(customerDeliveryMarker);
@@ -867,9 +1325,19 @@ document.addEventListener('DOMContentLoaded', function() {
       selectedCustomerLat = e.latlng.lat;
       selectedCustomerLng = e.latlng.lng;
       
-      // Update display
-      document.getElementById('customer-lat').textContent = selectedCustomerLat.toFixed(6);
-      document.getElementById('customer-lng').textContent = selectedCustomerLng.toFixed(6);
+      // Update hidden form fields
+      document.getElementById('customer-lat').value = selectedCustomerLat;
+      document.getElementById('customer-lng').value = selectedCustomerLng;
+      
+      // Try to get address from coordinates
+      try {
+        const address = await reverseGeocode(selectedCustomerLat, selectedCustomerLng);
+        document.getElementById('customer-address-display').textContent = address;
+        document.getElementById('customer-address').value = address;
+      } catch (error) {
+        document.getElementById('customer-address-display').textContent = 
+          `${selectedCustomerLat.toFixed(6)}, ${selectedCustomerLng.toFixed(6)}`;
+      }
     });
   }
   
@@ -895,10 +1363,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const cartItemsContainer = document.getElementById('cart-items');
     const cartTotalContainer = document.getElementById('cart-total');
     const cartTotalPrice = document.getElementById('cart-total-price');
+    const cartSubtotal = document.getElementById('cart-subtotal');
     const emptyCartMessage = document.getElementById('empty-cart-message');
     
     // Calculate total
-    cartTotal = cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
+    const subtotal = cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
+    const deliveryFee = 2.99;
+    cartTotal = subtotal + deliveryFee;
     
     // Update cart display
     if (cartItems.length === 0) {
@@ -929,6 +1400,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     cartItemsContainer.innerHTML = cartHTML;
+    cartSubtotal.textContent = subtotal.toFixed(2);
     cartTotalPrice.textContent = cartTotal.toFixed(2);
     
     // Add event listeners to remove buttons
@@ -940,7 +1412,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // Pre-fill delivery address with user's address
-    if (currentUser && currentUser.address) {
+    if (currentUser && currentUser.address && !document.getElementById('customer-address').value) {
       document.getElementById('customer-address').value = currentUser.address;
     }
     
@@ -1009,6 +1481,7 @@ document.addEventListener('DOMContentLoaded', function() {
       // Reset cart and hide menu section
       resetCart();
       document.getElementById('restaurant-menu-section').classList.add('hidden');
+      document.getElementById('customer-restaurants').classList.add('active');
       currentRestaurant = null;
       
       // Reset map marker
@@ -1028,7 +1501,7 @@ document.addEventListener('DOMContentLoaded', function() {
   async function loadCustomerOrders() {
     try {
       const orders = await apiCall('/api/customer/orders');
-      const ordersList = document.getElementById('customer-orders');
+      const ordersList = document.getElementById('customer-orders-list');
       
       if (orders.length === 0) {
         ordersList.innerHTML = `
@@ -1042,7 +1515,8 @@ document.addEventListener('DOMContentLoaded', function() {
       
       orders.forEach(order => {
         const orderCard = document.createElement('div');
-        orderCard.className = 'order-card';
+        orderCard.className = 'order-card customer-order';
+        orderCard.setAttribute('data-status', order.status);
         
         // Format time
         const orderDate = new Date(order.created_at);
@@ -1053,7 +1527,7 @@ document.addEventListener('DOMContentLoaded', function() {
           <div class="order-card-details">
             <p><strong>Restaurant:</strong> ${order.restaurant_name}</p>
             <p><strong>Total:</strong> $${order.total_price.toFixed(2)}</p>
-            <p><strong>Status:</strong> ${order.status}</p>
+            <p><strong>Status:</strong> <span class="order-status status-${order.status}">${order.status}</span></p>
             <p><strong>Ordered:</strong> ${orderDate.toLocaleString()}</p>
             <p><strong>Required By:</strong> ${requiredDate.toLocaleString()}</p>
             <p><strong>Delivery Address:</strong> ${order.delivery_address}</p>
@@ -1068,303 +1542,33 @@ document.addEventListener('DOMContentLoaded', function() {
       
     } catch (error) {
       console.error('Error loading customer orders:', error);
-      document.getElementById('customer-orders').innerHTML = 
+      document.getElementById('customer-orders-list').innerHTML = 
         `<p class="error-message">Error loading orders: ${error.message}</p>`;
     }
   }
   
-  // Admin Dashboard
+  // Admin Dashboard Functions
   function loadAdminDashboard() {
+    // Load admin statistics
+    loadAdminStats();
+    
     // Load all users
     loadAdminUsers();
     
     // Load all orders
     loadAdminOrders();
+    
+    // Setup admin filters
+    setupAdminFilters();
   }
   
-  async function loadAdminUsers() {
+  async function loadAdminStats() {
     try {
-      const users = await apiCall('/api/admin/users');
-      const usersList = document.getElementById('admin-users');
+      const stats = await apiCall('/api/admin/stats');
       
-      usersList.innerHTML = '';
+      // Update user counts
+      document.getElementById('total-users').textContent = 
+        Object.values(stats.users).reduce((sum, count) => sum + count, 0);
+      document.getElementById('total-merchants').textContent = stats.users.merchant || 0;
       
-      users.forEach(user => {
-        const userCard = document.createElement('div');
-        userCard.className = 'user-card';
-        
-        userCard.innerHTML = `
-          <h4>${user.name}</h4>
-          <p><strong>Email:</strong> ${user.email}</p>
-          <p><strong>Role:</strong> ${user.role}</p>
-          <p><strong>Address:</strong> ${user.address || 'N/A'}</p>
-          <p><strong>Registered:</strong> ${new Date(user.created_at).toLocaleDateString()}</p>
-        `;
-        
-        usersList.appendChild(userCard);
-      });
-      
-    } catch (error) {
-      console.error('Error loading users:', error);
-      document.getElementById('admin-users').innerHTML = 
-        `<p class="error-message">Error loading users: ${error.message}</p>`;
-    }
-  }
-  
-  async function loadAdminOrders() {
-    try {
-      const orders = await apiCall('/api/admin/orders');
-      const ordersList = document.getElementById('admin-orders');
-      
-      ordersList.innerHTML = '';
-      
-      orders.forEach(order => {
-        const orderCard = document.createElement('div');
-        orderCard.className = 'order-card';
-        
-        orderCard.innerHTML = `
-          <h4>Order #${order.id}</h4>
-          <div class="order-card-details">
-            <p><strong>Merchant:</strong> ${order.merchant_name}</p>
-            <p><strong>Customer:</strong> ${order.customer_name}</p>
-            <p><strong>Courier:</strong> ${order.courier_name || 'Not assigned'}</p>
-            <p><strong>Delivery Address:</strong> ${order.delivery_address}</p>
-            <p><strong>Required By:</strong> ${new Date(order.required_due_time).toLocaleString()}</p>
-            <p><strong>Status:</strong> ${order.status}</p>
-            <p><strong>Total Price:</strong> $${order.total_price.toFixed(2)}</p>
-            <p><strong>Created:</strong> ${new Date(order.created_at).toLocaleString()}</p>
-          </div>
-        `;
-        
-        ordersList.appendChild(orderCard);
-      });
-      
-    } catch (error) {
-      console.error('Error loading admin orders:', error);
-      document.getElementById('admin-orders').innerHTML = 
-        `<p class="error-message">Error loading orders: ${error.message}</p>`;
-    }
-  }
-  
-  // Set up the map
-  function setupMap() {
-    const mapElement = document.getElementById('courier-map');
-    if (!mapElement) return;
-    
-    // Default map center - Xianlin, Nanjing, China
-    const defaultCenter = [DEFAULT_LAT, DEFAULT_LNG];
-    
-    // Initialize map
-    map = L.map('courier-map').setView(defaultCenter, 13);
-    
-    // Add OpenStreetMap tiles
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '© OpenStreetMap contributors'
-    }).addTo(map);
-    
-    // If the courier has active orders, load them and display on map
-    if (currentUser && currentUser.role === 'courier') {
-      loadActiveOrdersWithLocations();
-      showAvailableOrdersOnMap();
-    }
-  }
-  
-  // Load active orders and display on map
-  async function loadActiveOrdersWithLocations() {
-    try {
-      // Check if map exists
-      if (!map) return;
-      
-      // Get active orders
-      const orders = await apiCall('/api/orders/courier/active');
-      activeOrders = orders;
-      
-      // Clear existing markers
-      clearMarkers();
-      
-      // Show available orders too
-      showAvailableOrdersOnMap();
-      
-      if (orders.length === 0) {
-        if (document.getElementById('route-stops')) {
-          document.getElementById('route-stops').innerHTML = '<p>No active orders to display.</p>';
-        }
-        return;
-      }
-      
-      // Add courier's location marker
-      addCourierLocationMarker();
-      
-      // Get locations for each address (merchant and customer)
-      const waypoints = [];
-      
-      // Process each order
-      for (const order of orders) {
-        // Add merchant marker
-        if (order.merchant_address) {
-          const merchantMarker = L.marker([DEFAULT_LAT + (Math.random() - 0.5) * 0.01, DEFAULT_LNG + (Math.random() - 0.5) * 0.01], {
-            icon: createCustomIcon('blue')
-          }).addTo(map);
-          
-          merchantMarker.bindPopup(`
-            <div class="popup-content">
-              <h4>${order.merchant_name}</h4>
-              <p>Pickup Location</p>
-              <p>Order #${order.id}</p>
-            </div>
-          `);
-          
-          markers.push(merchantMarker);
-          waypoints.push(merchantMarker.getLatLng());
-        }
-        
-        // Add delivery location marker
-        if (order.delivery_lat && order.delivery_lng) {
-          const deliveryMarker = L.marker([order.delivery_lat, order.delivery_lng], {
-            icon: createCustomIcon('red')
-          }).addTo(map);
-          
-          deliveryMarker.bindPopup(`
-            <div class="popup-content">
-              <h4>${order.customer_name}</h4>
-              <p>Delivery Location</p>
-              <p>Order #${order.id}</p>
-            </div>
-          `);
-          
-          markers.push(deliveryMarker);
-          waypoints.push(deliveryMarker.getLatLng());
-        }
-      }
-      
-      // Calculate and display route
-      if (waypoints.length > 0) {
-        calculateAndDisplayRoute(waypoints);
-      }
-      
-      // Fit map to show all markers
-      if (markers.length > 0) {
-        const group = new L.featureGroup(markers);
-        map.fitBounds(group.getBounds().pad(0.1)); // Add some padding
-      }
-      
-      // Display route information
-      renderRouteInfo(orders);
-      
-    } catch (error) {
-      console.error('Error loading active orders with locations:', error);
-      if (document.getElementById('route-stops')) {
-        document.getElementById('route-stops').innerHTML = 
-          `<p class="error-message">Error loading route data: ${error.message}</p>`;
-      }
-    }
-  }
-  
-  // Calculate and display the optimal route
-  function calculateAndDisplayRoute(waypoints) {
-    // If there are no waypoints or no map, return
-    if (!waypoints || waypoints.length === 0 || !map) return;
-    
-    // Clear any existing routes
-    if (routingControl) {
-      map.removeControl(routingControl);
-    }
-    
-    // Create routing control
-    routingControl = L.Routing.control({
-      waypoints: waypoints,
-      routeWhileDragging: false,
-      showAlternatives: false,
-      fitSelectedRoutes: false,
-      lineOptions: {
-        styles: [{ color: '#FF5722', opacity: 0.7, weight: 5 }]
-      },
-      createMarker: function() { return null; } // Don't create default markers
-    }).addTo(map);
-  }
-  
-  // Display route information in the sidebar
-  function renderRouteInfo(orders) {
-    const routeStopsElement = document.getElementById('route-stops');
-    const estimatedTimesElement = document.getElementById('estimated-times');
-    
-    if (!routeStopsElement || !estimatedTimesElement) return;
-    
-    let routeHTML = '';
-    let totalTime = 0;
-    let totalDistance = 0;
-    
-    // Add courier location as start
-    routeHTML += `
-      <div class="route-stop">
-        <p><strong>Start:</strong> Your Location</p>
-      </div>
-    `;
-    
-    // Add merchant and customer stops
-    orders.forEach((order, index) => {
-      // Add merchant stop
-      routeHTML += `
-        <div class="route-stop stop-merchant">
-          <p><strong>Stop ${index * 2 + 1}:</strong> ${order.merchant_name}</p>
-          <p>${order.merchant_address}</p>
-          <p><small>Order #${order.id} - Pickup</small></p>
-        </div>
-      `;
-      
-      // Add customer stop
-      routeHTML += `
-        <div class="route-stop stop-customer">
-          <p><strong>Stop ${index * 2 + 2}:</strong> ${order.customer_name}</p>
-          <p>${order.delivery_address}</p>
-          <p><small>Order #${order.id} - Delivery</small></p>
-        </div>
-      `;
-      
-      // Add estimated time and distance
-      totalTime += 20; // 20 minutes per order (pickup + delivery)
-      totalDistance += 5; // 5 km per order (estimated)
-    });
-    
-    // Update the DOM
-    routeStopsElement.innerHTML = routeHTML;
-    
-    // Display total estimated time and distance
-    estimatedTimesElement.innerHTML = `
-      <div class="route-summary">
-        <p><strong>Total estimated time:</strong> ${totalTime} minutes</p>
-        <p><strong>Total distance:</strong> ${totalDistance.toFixed(1)} km</p>
-      </div>
-    `;
-  }
-  
-  // Clear all markers from the map
-  function clearMarkers() {
-    if (!map) return;
-    
-    markers.forEach(marker => map.removeLayer(marker));
-    markers = [];
-  }
-  
-  // Initialize map when document is ready
-  function initializeMap() {
-    if (currentUser) {
-      if (currentUser.role === 'courier' && document.getElementById('courier-map')) {
-        setupMap();
-      } else if (currentUser.role === 'merchant' && document.getElementById('merchant-map')) {
-        initializeMerchantMap();
-      }
-    }
-  }
-  
-  // Initialize map when document is ready
-  setTimeout(initializeMap, 1000);
-  
-  // Check if user is already logged in
-  if (token && currentUser) {
-    showDashboard();
-  } else {
-    showAuthForms();
-  }
-});
+      // Update order countss
