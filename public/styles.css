@@ -116,7 +116,8 @@ button:hover {
 }
 
 .form-group input,
-.form-group select {
+.form-group select,
+.form-group textarea {
   width: 100%;
   padding: 10px;
   border: 1px solid #ddd;
@@ -393,6 +394,186 @@ button:hover {
   border-left-color: #f44336;
 }
 
+/* Restaurant grid styling */
+.restaurant-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.restaurant-card {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 15px;
+  background-color: white;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.restaurant-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.restaurant-card h4 {
+  margin-bottom: 10px;
+}
+
+.restaurant-card.selected {
+  border: 2px solid #FF5722;
+  background-color: #FFF8E1;
+}
+
+/* Menu grid styling */
+.menu-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 15px;
+  margin: 20px 0;
+}
+
+.menu-item {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 12px;
+  background-color: white;
+}
+
+.menu-item-price {
+  font-weight: bold;
+  color: #FF5722;
+  margin-top: 5px;
+}
+
+.menu-item-controls {
+  display: flex;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.menu-item-quantity {
+  width: 40px;
+  text-align: center;
+  margin: 0 8px;
+}
+
+/* Order step styling */
+.order-step {
+  display: none;
+  margin-bottom: 20px;
+}
+
+.order-step.active {
+  display: block;
+}
+
+/* Button styling */
+.primary-btn {
+  background-color: #FF5722;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.secondary-btn {
+  background-color: #E0E0E0;
+  color: #333;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+/* Customer map container */
+#customer-map-container, #merchant-map-container {
+  height: 300px;
+  margin: 15px 0;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #ddd;
+}
+
+#customer-map, #merchant-map {
+  height: 100%;
+}
+
+.map-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+/* Selected items list */
+#selected-items {
+  margin: 20px 0;
+  padding: 15px;
+  background-color: #f5f5f5;
+  border-radius: 8px;
+  border-left: 4px solid #FF5722;
+}
+
+#order-items-list {
+  margin: 10px 0;
+}
+
+.order-item-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 5px 0;
+  border-bottom: 1px dotted #ddd;
+}
+
+#order-total {
+  margin-top: 10px;
+  font-weight: bold;
+  text-align: right;
+}
+
+/* Order status colors */
+.order-status {
+  font-weight: bold;
+  padding: 3px 8px;
+  border-radius: 4px;
+  display: inline-block;
+  margin-top: 5px;
+}
+
+.status-pending {
+  background-color: #FFECB3;
+  color: #FFA000;
+}
+
+.status-preparing {
+  background-color: #C8E6C9;
+  color: #388E3C;
+}
+
+.status-accepted {
+  background-color: #BBDEFB;
+  color: #1976D2;
+}
+
+.status-outfordelivery {
+  background-color: #B3E5FC;
+  color: #0288D1;
+}
+
+.status-delivered {
+  background-color: #C8E6C9;
+  color: #388E3C;
+}
+
+.status-cancelled {
+  background-color: #FFCDD2;
+  color: #D32F2F;
+}
+
 /* Make the map responsive */
 @media (max-width: 768px) {
   #map-container {
@@ -410,5 +591,13 @@ button:hover {
   .order-card-actions button {
     width: 100%;
     margin-bottom: 5px;
+  }
+  
+  .restaurant-grid {
+    grid-template-columns: repeat(auto-fill, minmax(100%, 1fr));
+  }
+  
+  .menu-grid {
+    grid-template-columns: repeat(auto-fill, minmax(100%, 1fr));
   }
 }
