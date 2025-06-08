@@ -1571,4 +1571,4 @@ document.addEventListener('DOMContentLoaded', function() {
         Object.values(stats.users).reduce((sum, count) => sum + count, 0);
       document.getElementById('total-merchants').textContent = stats.users.merchant || 0;
       
-      // Update order countss
+      // Update order countsssd
