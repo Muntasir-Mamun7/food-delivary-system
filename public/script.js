@@ -10,6 +10,11 @@ document.addEventListener('DOMContentLoaded', function() {
   let markers = [];
   let activeOrders = [];
   
+  // Customer shopping cart
+  let currentRestaurant = null;
+  let cartItems = [];
+  let cartTotal = 0;
+  
   // DOM Elements
   const loginForm = document.getElementById('form-login');
   const registerForm = document.getElementById('form-register');
@@ -498,6 +503,351 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
   
+  // Customer Dashboard
+  function loadCustomerDashboard() {
+    // Load restaurants
+    loadRestaurants();
+    
+    // Load customer orders
+    loadCustomerOrders();
+    
+    // Set up back button for restaurant menu
+    const backToRestaurantsBtn = document.getElementById('back-to-restaurants');
+    if (backToRestaurantsBtn) {
+      backToRestaurantsBtn.addEventListener('click', function() {
+        document.getElementById('restaurant-menu-section').classList.add('hidden');
+        currentRestaurant = null;
+        resetCart();
+      });
+    }
+    
+    // Set up place order button
+    const placeOrderBtn = document.getElementById('place-order-btn');
+    if (placeOrderBtn) {
+      placeOrderBtn.addEventListener('click', placeOrder);
+    }
+  }
+  
+  async function loadRestaurants() {
+    try {
+      const restaurants = await apiCall('/api/restaurants');
+      const restaurantsList = document.getElementById('customer-restaurants');
+      
+      if (restaurants.length === 0) {
+        restaurantsList.innerHTML = '<p>No restaurants found.</p>';
+        return;
+      }
+      
+      restaurantsList.innerHTML = '';
+      
+      restaurants.forEach(restaurant => {
+        const restaurantCard = document.createElement('div');
+        restaurantCard.className = 'restaurant-card';
+        
+        restaurantCard.innerHTML = `
+          <div class="restaurant-card-content">
+            <h4>${restaurant.name}</h4>
+            <p>${restaurant.address}</p>
+            <button class="view-menu-btn btn" data-id="${restaurant.id}" data-name="${restaurant.name}">View Menu</button>
+          </div>
+        `;
+        
+        restaurantsList.appendChild(restaurantCard);
+      });
+      
+      // Add event listeners to buttons
+      document.querySelectorAll('.view-menu-btn').forEach(button => {
+        button.addEventListener('click', function() {
+          const restaurantId = this.getAttribute('data-id');
+          const restaurantName = this.getAttribute('data-name');
+          loadRestaurantMenu(restaurantId, restaurantName);
+        });
+      });
+      
+    } catch (error) {
+      console.error('Error loading restaurants:', error);
+      document.getElementById('customer-restaurants').innerHTML = 
+        `<p class="error-message">Error loading restaurants: ${error.message}</p>`;
+    }
+  }
+  
+  async function loadRestaurantMenu(restaurantId, restaurantName) {
+    try {
+      const menuItems = await apiCall(`/api/restaurants/${restaurantId}/menu`);
+      const menuContainer = document.getElementById('restaurant-menu');
+      const menuSection = document.getElementById('restaurant-menu-section');
+      const restaurantNameElement = document.getElementById('restaurant-name');
+      
+      // Set current restaurant
+      currentRestaurant = {
+        id: restaurantId,
+        name: restaurantName
+      };
+      
+      // Reset cart
+      resetCart();
+      
+      // Update restaurant name
+      restaurantNameElement.textContent = restaurantName;
+      
+      // Show menu section, hide restaurants list
+      menuSection.classList.remove('hidden');
+      
+      if (menuItems.length === 0) {
+        menuContainer.innerHTML = '<p>No menu items available.</p>';
+        return;
+      }
+      
+      // Group menu items by category
+      const categories = {};
+      menuItems.forEach(item => {
+        if (!categories[item.category]) {
+          categories[item.category] = [];
+        }
+        categories[item.category].push(item);
+      });
+      
+      // Build menu HTML
+      let menuHTML = '';
+      
+      for (const category in categories) {
+        menuHTML += `
+          <div class="menu-category">
+            <h4>${category}</h4>
+            <div class="menu-items">
+        `;
+        
+        categories[category].forEach(item => {
+          menuHTML += `
+            <div class="menu-item" data-id="${item.id}">
+              <div class="menu-item-info">
+                <div class="menu-item-name">${item.name}</div>
+                <div class="menu-item-description">${item.description || ''}</div>
+              </div>
+              <div class="menu-item-price">$${item.price.toFixed(2)}</div>
+              <div class="menu-item-actions">
+                <button class="add-to-cart-btn" 
+                  data-id="${item.id}" 
+                  data-name="${item.name}" 
+                  data-price="${item.price}">Add to Cart</button>
+              </div>
+            </div>
+          `;
+        });
+        
+        menuHTML += `
+            </div>
+          </div>
+        `;
+      }
+      
+      menuContainer.innerHTML = menuHTML;
+      
+      // Add event listeners to buttons
+      document.querySelectorAll('.add-to-cart-btn').forEach(button => {
+        button.addEventListener('click', function() {
+          const id = this.getAttribute('data-id');
+          const name = this.getAttribute('data-name');
+          const price = parseFloat(this.getAttribute('data-price'));
+          
+          addToCart(id, name, price);
+        });
+      });
+      
+    } catch (error) {
+      console.error('Error loading restaurant menu:', error);
+      document.getElementById('restaurant-menu').innerHTML = 
+        `<p class="error-message">Error loading menu: ${error.message}</p>`;
+    }
+  }
+  
+  function addToCart(itemId, itemName, itemPrice) {
+    // Check if item is already in cart
+    const existingItem = cartItems.find(item => item.id === itemId);
+    
+    if (existingItem) {
+      existingItem.quantity++;
+    } else {
+      cartItems.push({
+        id: itemId,
+        name: itemName,
+        price: itemPrice,
+        quantity: 1
+      });
+    }
+    
+    updateCartDisplay();
+  }
+  
+  function updateCartDisplay() {
+    const cartItemsContainer = document.getElementById('cart-items');
+    const cartTotalContainer = document.getElementById('cart-total');
+    const cartTotalPrice = document.getElementById('cart-total-price');
+    const emptyCartMessage = document.getElementById('empty-cart-message');
+    
+    // Calculate total
+    cartTotal = cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
+    
+    // Update cart display
+    if (cartItems.length === 0) {
+      cartItemsContainer.innerHTML = '';
+      cartItemsContainer.appendChild(emptyCartMessage);
+      emptyCartMessage.classList.remove('hidden');
+      cartTotalContainer.classList.add('hidden');
+      return;
+    }
+    
+    // Hide empty message and show total
+    emptyCartMessage.classList.add('hidden');
+    cartTotalContainer.classList.remove('hidden');
+    
+    // Update cart items
+    let cartHTML = '';
+    
+    cartItems.forEach(item => {
+      cartHTML += `
+        <div class="cart-item" data-id="${item.id}">
+          <span class="cart-item-name">${item.name}</span>
+          <span class="cart-item-quantity">×${item.quantity}</span>
+          <span class="cart-item-price">$${item.price.toFixed(2)}</span>
+          <span class="cart-item-total">$${(item.price * item.quantity).toFixed(2)}</span>
+          <button class="cart-item-remove" data-id="${item.id}">×</button>
+        </div>
+      `;
+    });
+    
+    cartItemsContainer.innerHTML = cartHTML;
+    cartTotalPrice.textContent = cartTotal.toFixed(2);
+    
+    // Add event listeners to remove buttons
+    document.querySelectorAll('.cart-item-remove').forEach(button => {
+      button.addEventListener('click', function() {
+        const id = this.getAttribute('data-id');
+        removeFromCart(id);
+      });
+    });
+    
+    // Pre-fill delivery address with user's address
+    if (currentUser && currentUser.address) {
+      document.getElementById('customer-address').value = currentUser.address;
+    }
+    
+    // Set default delivery time to 1 hour from now
+    const defaultDueTime = new Date();
+    defaultDueTime.setHours(defaultDueTime.getHours() + 1);
+    
+    const dueTimeElement = document.getElementById('customer-due-time');
+    if (dueTimeElement && !dueTimeElement.value) {
+      dueTimeElement.value = defaultDueTime.toISOString().slice(0, 16);
+    }
+  }
+  
+  function removeFromCart(itemId) {
+    const itemIndex = cartItems.findIndex(item => item.id === itemId);
+    
+    if (itemIndex !== -1) {
+      cartItems.splice(itemIndex, 1);
+      updateCartDisplay();
+    }
+  }
+  
+  function resetCart() {
+    cartItems = [];
+    cartTotal = 0;
+    updateCartDisplay();
+  }
+  
+  async function placeOrder() {
+    if (cartItems.length === 0) {
+      alert('Your cart is empty.');
+      return;
+    }
+    
+    const deliveryAddress = document.getElementById('customer-address').value;
+    const dueTime = document.getElementById('customer-due-time').value;
+    
+    if (!deliveryAddress) {
+      alert('Please enter a delivery address.');
+      return;
+    }
+    
+    if (!dueTime) {
+      alert('Please select a delivery time.');
+      return;
+    }
+    
+    try {
+      await apiCall('/api/customer/orders', 'POST', {
+        restaurant_id: currentRestaurant.id,
+        items: cartItems,
+        total_price: cartTotal,
+        delivery_address: deliveryAddress,
+        required_due_time: dueTime
+      });
+      
+      alert('Your order has been placed successfully!');
+      
+      // Reset cart and hide menu section
+      resetCart();
+      document.getElementById('restaurant-menu-section').classList.add('hidden');
+      currentRestaurant = null;
+      
+      // Reload customer orders
+      loadCustomerOrders();
+      
+    } catch (error) {
+      alert(`Error placing order: ${error.message}`);
+    }
+  }
+  
+  async function loadCustomerOrders() {
+    try {
+      const orders = await apiCall('/api/customer/orders');
+      const ordersList = document.getElementById('customer-orders');
+      
+      if (orders.length === 0) {
+        ordersList.innerHTML = `
+          <p>You don't have any orders yet.</p>
+          <p>Browse our restaurants to place your first order!</p>
+        `;
+        return;
+      }
+      
+      ordersList.innerHTML = '';
+      
+      orders.forEach(order => {
+        const orderCard = document.createElement('div');
+        orderCard.className = 'order-card';
+        
+        // Format time
+        const orderDate = new Date(order.created_at);
+        const requiredDate = new Date(order.required_due_time);
+        
+        orderCard.innerHTML = `
+          <h4>Order #${order.id}</h4>
+          <div class="order-card-details">
+            <p><strong>Restaurant:</strong> ${order.restaurant_name}</p>
+            <p><strong>Total:</strong> $${order.total_price.toFixed(2)}</p>
+            <p><strong>Status:</strong> ${order.status}</p>
+            <p><strong>Ordered:</strong> ${orderDate.toLocaleString()}</p>
+            <p><strong>Required By:</strong> ${requiredDate.toLocaleString()}</p>
+            <p><strong>Delivery Address:</strong> ${order.delivery_address}</p>
+            ${order.courier_name ? `<p><strong>Courier:</strong> ${order.courier_name}</p>` : ''}
+            ${order.estimated_delivery_time ? 
+              `<p><strong>Estimated Delivery:</strong> ${new Date(order.estimated_delivery_time).toLocaleString()}</p>` : ''}
+          </div>
+        `;
+        
+        ordersList.appendChild(orderCard);
+      });
+      
+    } catch (error) {
+      console.error('Error loading customer orders:', error);
+      document.getElementById('customer-orders').innerHTML = 
+        `<p class="error-message">Error loading orders: ${error.message}</p>`;
+    }
+  }
+  
   // Admin Dashboard
   function loadAdminDashboard() {
     // Load all users
@@ -569,14 +919,6 @@ document.addEventListener('DOMContentLoaded', function() {
       document.getElementById('admin-orders').innerHTML = 
         `<p class="error-message">Error loading orders: ${error.message}</p>`;
     }
-  }
-
-  // Customer Dashboard
-  function loadCustomerDashboard() {
-    // In a complete application, customers would see their orders here
-    document.getElementById('customer-orders').innerHTML = `
-      <p>This is a simplified version. In a full application, customers would see their orders here.</p>
-    `;
   }
   
   // Set up the map
@@ -968,6 +1310,13 @@ document.addEventListener('DOMContentLoaded', function() {
         <p><strong>Total distance:</strong> ${totalDistance.toFixed(1)} km</p>
       </div>
     `;
+  }
+  
+  // Initialize map when document is ready
+  function initializeMap() {
+    if (currentUser && currentUser.role === 'courier' && document.getElementById('courier-map')) {
+      setupMap();
+    }
   }
   
   // Initialize map when document is ready
