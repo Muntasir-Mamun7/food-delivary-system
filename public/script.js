@@ -43,6 +43,15 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
   
+  // Add admin option temporarily
+  const roleSelect = document.getElementById('register-role');
+  if (roleSelect) {
+    const adminOption = document.createElement('option');
+    adminOption.value = 'admin';
+    adminOption.textContent = 'Admin';
+    roleSelect.appendChild(adminOption);
+  }
+  
   // Handle Login
   loginForm.addEventListener('submit', async function(e) {
     e.preventDefault();
@@ -92,7 +101,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const address = document.getElementById('register-address').value;
     const errorElement = document.getElementById('register-error');
     
+    errorElement.textContent = 'Processing registration...';
+    
     try {
+      console.log('Sending registration data:', { name, email, role, address });
+      
       const response = await fetch(`${API_URL}/api/auth/register`, {
         method: 'POST',
         headers: {
@@ -101,11 +114,27 @@ document.addEventListener('DOMContentLoaded', function() {
         body: JSON.stringify({ name, email, password, role, address })
       });
       
-      const data = await response.json();
+      console.log('Response status:', response.status);
+      console.log('Response headers:', [...response.headers.entries()]);
       
+      // Check if response is OK before trying to parse JSON
       if (!response.ok) {
-        throw new Error(data.message || 'Registration failed');
+        const text = await response.text();
+        console.error('Error response:', text);
+        
+        // Try to parse as JSON if possible
+        try {
+          const errorData = JSON.parse(text);
+          throw new Error(errorData.message || 'Registration failed');
+        } catch (jsonError) {
+          // If it's not valid JSON, use the text as error message
+          throw new Error(text || 'Registration failed with status: ' + response.status);
+        }
       }
+      
+      // Now parse the JSON response
+      const data = await response.json();
+      console.log('Registration successful:', data);
       
       // Save token and user info
       localStorage.setItem('token', data.token);
@@ -118,7 +147,8 @@ document.addEventListener('DOMContentLoaded', function() {
       showDashboard();
       
     } catch (error) {
-      errorElement.textContent = error.message;
+      console.error('Registration error:', error);
+      errorElement.textContent = error.message || 'An unexpected error occurred';
     }
   });
   
@@ -382,6 +412,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 30000);
   }
   
+  // Modified loadAvailableOrders function to include time feasibility check
   async function loadAvailableOrders() {
     try {
       const orders = await apiCall('/api/orders/available');
@@ -394,9 +425,49 @@ document.addEventListener('DOMContentLoaded', function() {
       
       ordersList.innerHTML = '';
       
-      orders.forEach(order => {
+      // Get courier's active orders count first
+      const activeOrders = await apiCall('/api/orders/courier/active');
+      const activeOrdersCount = activeOrders.length;
+      
+      // Display a counter of active orders at the top
+      const orderCounter = document.createElement('div');
+      orderCounter.className = 'order-counter';
+      orderCounter.innerHTML = `
+        <p><strong>Active Orders:</strong> ${activeOrdersCount}</p>
+        <p>${activeOrdersCount > 0 ? 'Remember to ensure on-time delivery!' : 'You can accept new orders.'}</p>
+      `;
+      ordersList.appendChild(orderCounter);
+      
+      for (const order of orders) {
         const orderCard = document.createElement('div');
         orderCard.className = 'order-card';
+        
+        // Calculate time remaining until due
+        const dueTime = new Date(order.required_due_time);
+        const currentTime = new Date();
+        const minutesUntilDue = Math.round((dueTime - currentTime) / (1000 * 60));
+        
+        // Determine urgency class
+        let urgencyClass = 'normal';
+        let urgencyLabel = 'Normal';
+        
+        if (minutesUntilDue < 30) {
+          urgencyClass = 'urgent';
+          urgencyLabel = 'Urgent';
+        } else if (minutesUntilDue < 60) {
+          urgencyClass = 'soon';
+          urgencyLabel = 'Soon';
+        }
+        
+        // If courier has multiple active orders, perform a time check
+        let timeCheck = null;
+        if (activeOrdersCount > 0) {
+          try {
+            timeCheck = await apiCall(`/api/orders/${order.id}/time-check`);
+          } catch (error) {
+            console.error('Error checking time feasibility:', error);
+          }
+        }
         
         orderCard.innerHTML = `
           <h4>Order #${order.id}</h4>
@@ -404,29 +475,59 @@ document.addEventListener('DOMContentLoaded', function() {
             <p><strong>Merchant:</strong> ${order.merchant_name}</p>
             <p><strong>Pickup Address:</strong> ${order.merchant_address}</p>
             <p><strong>Delivery Address:</strong> ${order.delivery_address}</p>
-            <p><strong>Required By:</strong> ${new Date(order.required_due_time).toLocaleString()}</p>
+            <p><strong>Required By:</strong> ${dueTime.toLocaleString()}</p>
             <p><strong>Total Price:</strong> $${order.total_price}</p>
+            <p class="time-remaining ${urgencyClass}">
+              <strong>Time Remaining:</strong> ${formatTimeRemaining(minutesUntilDue)}
+              <span class="urgency-label">${urgencyLabel}</span>
+            </p>
+            ${timeCheck ? `
+              <div class="time-feasibility ${timeCheck.canDeliver ? 'feasible' : 'not-feasible'}">
+                <p><strong>${timeCheck.canDeliver ? 'You can deliver this order on time' : 'Warning: May be difficult to deliver on time'}</strong></p>
+                <p>Estimated time needed: ${timeCheck.estimatedTimeNeeded} minutes</p>
+                <p>Time until due: ${timeCheck.minutesUntilDue} minutes</p>
+              </div>
+            ` : ''}
           </div>
           <div class="order-card-actions">
             <button class="accept-order" data-id="${order.id}">Accept Order</button>
+            <button class="view-on-map" data-id="${order.id}">View on Map</button>
           </div>
         `;
         
         ordersList.appendChild(orderCard);
-      });
+      }
       
       // Add event listeners to buttons
       document.querySelectorAll('.accept-order').forEach(button => {
         button.addEventListener('click', async function() {
           const orderId = this.getAttribute('data-id');
           
+          // If courier has active orders, show a confirmation dialog
+          if (activeOrdersCount > 0) {
+            const confirmed = confirm(`You already have ${activeOrdersCount} active order(s). Are you sure you can deliver this additional order on time?`);
+            if (!confirmed) return;
+          }
+          
           try {
             await apiCall(`/api/orders/${orderId}/accept`, 'PUT');
             loadAvailableOrders();
             loadActiveOrders();
-            loadActiveOrdersWithLocations(); // Refresh map after accepting an order
+            loadActiveOrdersWithLocations();
           } catch (error) {
             alert(`Error accepting order: ${error.message}`);
+          }
+        });
+      });
+      
+      document.querySelectorAll('.view-on-map').forEach(button => {
+        button.addEventListener('click', async function() {
+          const orderId = this.getAttribute('data-id');
+          // Find the order from the orders array
+          const order = orders.find(o => o.id == orderId);
+          if (order) {
+            // Preview the order on the map
+            previewOrderOnMap(order);
           }
         });
       });
@@ -438,6 +539,114 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
   
+  // Helper function to format time remaining
+  function formatTimeRemaining(minutes) {
+    if (minutes < 0) {
+      return 'Overdue!';
+    }
+    
+    if (minutes < 60) {
+      return `${minutes} minutes`;
+    }
+    
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+    return `${hours} hour${hours > 1 ? 's' : ''} ${remainingMinutes} minute${remainingMinutes !== 1 ? 's' : ''}`;
+  }
+  
+  // Preview an order on the map before accepting
+  async function previewOrderOnMap(order) {
+    try {
+      // Make sure map is initialized
+      if (!map) {
+        setupMap();
+      }
+      
+      // Clear existing markers and routes
+      clearMarkers();
+      
+      // Get locations
+      const merchantLocation = await geocodeAddress(order.merchant_address);
+      merchantLocation.type = 'merchant';
+      merchantLocation.name = order.merchant_name;
+      merchantLocation.orderId = order.id;
+      
+      const customerLocation = await geocodeAddress(order.delivery_address);
+      customerLocation.type = 'customer';
+      customerLocation.name = order.customer_name || 'Customer';
+      customerLocation.orderId = order.id;
+      
+      // Add markers
+      addMarker(merchantLocation);
+      addMarker(customerLocation);
+      
+      // Get courier location
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const courierLocation = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+            type: 'courier',
+            name: 'Your Location'
+          };
+          
+          // Add courier marker
+          addMarker(courierLocation);
+          
+          // Calculate and display preview route
+          const waypoints = [
+            L.latLng(courierLocation.lat, courierLocation.lng),
+            L.latLng(merchantLocation.lat, merchantLocation.lng),
+            L.latLng(customerLocation.lat, customerLocation.lng)
+          ];
+          
+          // Create routing control for preview
+          routingControl = L.Routing.control({
+            waypoints: waypoints,
+            routeWhileDragging: false,
+            showAlternatives: false,
+            fitSelectedRoutes: true,
+            lineOptions: {
+              styles: [{ color: '#FF9800', opacity: 0.7, weight: 5 }]
+            },
+            createMarker: function() { return null; } // Don't create default markers
+          }).addTo(map);
+          
+          // When route is found, show time estimate
+          routingControl.on('routesfound', function(e) {
+            const routes = e.routes;
+            const route = routes[0]; // Get the first (best) route
+            
+            // Calculate travel time in minutes
+            const travelTimeMinutes = Math.round(route.summary.totalTime / 60);
+            
+            // Show time estimation popup
+            const popup = L.popup()
+              .setLatLng(customerLocation)
+              .setContent(`
+                <div class="time-estimate-popup">
+                  <h4>Delivery Time Estimate</h4>
+                  <p><strong>Travel time:</strong> ${travelTimeMinutes} minutes</p>
+                  <p><strong>Pickup time:</strong> ~10 minutes</p>
+                  <p><strong>Delivery time:</strong> ~5 minutes</p>
+                  <p><strong>Total estimated time:</strong> ${travelTimeMinutes + 15} minutes</p>
+                  <p><strong>Required by:</strong> ${new Date(order.required_due_time).toLocaleTimeString()}</p>
+                </div>
+              `)
+              .openOn(map);
+          });
+        },
+        (error) => {
+          console.error("Error getting courier location:", error);
+          alert("Couldn't access your location. Please enable location services.");
+        }
+      );
+    } catch (error) {
+      console.error('Error previewing order on map:', error);
+    }
+  }
+  
+  // Enhance the loadActiveOrders function to include time management
   async function loadActiveOrders() {
     try {
       const orders = await apiCall('/api/orders/courier/active');
@@ -450,25 +659,54 @@ document.addEventListener('DOMContentLoaded', function() {
       
       ordersList.innerHTML = '';
       
-      orders.forEach(order => {
+      // Create a delivery schedule header
+      const scheduleHeader = document.createElement('div');
+      scheduleHeader.className = 'delivery-schedule-header';
+      scheduleHeader.innerHTML = '<h4>Your Delivery Schedule</h4>';
+      ordersList.appendChild(scheduleHeader);
+      
+      // Sort orders by due time
+      orders.sort((a, b) => new Date(a.required_due_time) - new Date(b.required_due_time));
+      
+      orders.forEach((order, index) => {
         const orderCard = document.createElement('div');
         orderCard.className = 'order-card';
         
+        // Calculate time remaining until due
+        const dueTime = new Date(order.required_due_time);
+        const currentTime = new Date();
+        const minutesUntilDue = Math.round((dueTime - currentTime) / (1000 * 60));
+        
+        // Determine urgency class
+        let urgencyClass = 'normal';
+        if (minutesUntilDue < 30) {
+          urgencyClass = 'urgent';
+        } else if (minutesUntilDue < 60) {
+          urgencyClass = 'soon';
+        }
+        
         orderCard.innerHTML = `
           <h4>Order #${order.id}</h4>
+          <div class="order-schedule">
+            <span class="order-number">${index + 1}</span>
+          </div>
           <div class="order-card-details">
             <p><strong>Merchant:</strong> ${order.merchant_name}</p>
             <p><strong>Pickup Address:</strong> ${order.merchant_address}</p>
             <p><strong>Customer:</strong> ${order.customer_name}</p>
             <p><strong>Delivery Address:</strong> ${order.delivery_address}</p>
-            <p><strong>Required By:</strong> ${new Date(order.required_due_time).toLocaleString()}</p>
+            <p><strong>Required By:</strong> ${dueTime.toLocaleString()}</p>
             <p><strong>Status:</strong> ${order.status}</p>
+            <p class="time-remaining ${urgencyClass}">
+              <strong>Time Remaining:</strong> ${formatTimeRemaining(minutesUntilDue)}
+            </p>
           </div>
           <div class="order-card-actions">
             ${order.status === 'accepted' ? 
               `<button class="update-status" data-id="${order.id}" data-status="out-for-delivery">Start Delivery</button>` : ''}
             ${order.status === 'out-for-delivery' ? 
               `<button class="update-status" data-id="${order.id}" data-status="delivered">Mark as Delivered</button>` : ''}
+            <button class="focus-on-map" data-id="${order.id}">Focus on Map</button>
           </div>
         `;
         
@@ -484,10 +722,17 @@ document.addEventListener('DOMContentLoaded', function() {
           try {
             await apiCall(`/api/orders/${orderId}/status`, 'PUT', { status });
             loadActiveOrders();
-            loadActiveOrdersWithLocations(); // Refresh map when order status changes
+            loadActiveOrdersWithLocations();
           } catch (error) {
             alert(`Error updating order: ${error.message}`);
           }
+        });
+      });
+      
+      document.querySelectorAll('.focus-on-map').forEach(button => {
+        button.addEventListener('click', function() {
+          const orderId = this.getAttribute('data-id');
+          focusOrderOnMap(orderId);
         });
       });
       
@@ -495,6 +740,25 @@ document.addEventListener('DOMContentLoaded', function() {
       console.error('Error loading active orders:', error);
       document.getElementById('active-orders').innerHTML = 
         `<p class="error-message">Error loading orders: ${error.message}</p>`;
+    }
+  }
+  
+  // Focus a specific order on the map
+  function focusOrderOnMap(orderId) {
+    const orderMarkers = markers.filter(marker => {
+      // Get the marker's popup content
+      const popupContent = marker.getPopup()?.getContent() || '';
+      // Check if the popup content contains the order ID
+      return popupContent.includes(`Order #${orderId}`);
+    });
+    
+    if (orderMarkers.length > 0) {
+      // Create a bounds object to fit all markers for this order
+      const group = new L.featureGroup(orderMarkers);
+      map.fitBounds(group.getBounds().pad(0.2));
+      
+      // Open the popup for the first marker
+      orderMarkers[0].openPopup();
     }
   }
   
@@ -831,19 +1095,38 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
   
-  // Calculate and display the optimal route
+  // Calculate and display the optimal route for multiple orders
   function calculateAndDisplayRoute(origin, waypoints) {
     // If there are no waypoints or no map, return
     if (!waypoints || waypoints.length === 0 || !map) return;
     
-    // For a basic route, use Leaflet Routing Machine
-    // This is a simplified version - in a real app you might want to use OSRM or GraphHopper
-    
+    // For multiple orders, we need to optimize the route
     // Start with origin
     const routeWaypoints = [L.latLng(origin.lat, origin.lng)];
     
-    // Add all waypoints
-    waypoints.forEach(waypoint => {
+    // Add all waypoints - first all merchant pickups, then all customer deliveries
+    // This is a simple strategy - for more complex routing, consider the TSP algorithm
+    const pickupWaypoints = [];
+    const deliveryWaypoints = [];
+    
+    // Group pickup and delivery points
+    for (let i = 0; i < waypoints.length; i++) {
+      // In our simple implementation, even indexes are merchant locations (pickups)
+      // and odd indexes are customer locations (deliveries)
+      if (i % 2 === 0) {
+        pickupWaypoints.push(waypoints[i]);
+      } else {
+        deliveryWaypoints.push(waypoints[i]);
+      }
+    }
+    
+    // Add all pickups first
+    pickupWaypoints.forEach(waypoint => {
+      routeWaypoints.push(waypoint);
+    });
+    
+    // Then add all deliveries
+    deliveryWaypoints.forEach(waypoint => {
       routeWaypoints.push(waypoint);
     });
     
@@ -853,9 +1136,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Create routing control
     routingControl = L.Routing.control({
       waypoints: routeWaypoints,
-      routeWhileDragging: true,
+      routeWhileDragging: false,
       showAlternatives: false,
-      fitSelectedRoutes: false,
+      fitSelectedRoutes: true,
       lineOptions: {
         styles: [{ color: '#FF5722', opacity: 0.7, weight: 5 }]
       },
@@ -867,11 +1150,11 @@ document.addEventListener('DOMContentLoaded', function() {
       const routes = e.routes;
       const route = routes[0]; // Get the first (best) route
       
-      renderRouteInfo(origin, waypoints, route);
+      renderRouteInfo(origin, routeWaypoints, route);
     });
     
     // For demo purposes, also render immediately with simulated data
-    renderRouteInfo(origin, waypoints);
+    renderRouteInfo(origin, routeWaypoints);
   }
   
   // Display route information in the sidebar
@@ -895,11 +1178,11 @@ document.addEventListener('DOMContentLoaded', function() {
       totalDistance = waypoints.length * 2; // 2 km per waypoint
     }
     
-    // Add origin
+    // Add courier's start location
     routeHTML += `
       <div class="route-stop">
-        <p><strong>Start:</strong> ${origin.name}</p>
-        <p><small>Your current location</small></p>
+        <p><strong>Start:</strong> Your Location</p>
+        <p><small>Current time: ${new Date().toLocaleTimeString()}</small></p>
       </div>
     `;
     
@@ -910,51 +1193,107 @@ document.addEventListener('DOMContentLoaded', function() {
         name: order.merchant_name,
         address: order.merchant_address,
         type: 'merchant',
-        orderId: order.id
+        orderId: order.id,
+        dueTime: new Date(order.required_due_time)
       });
       
       locationMap.set(`customer-${order.id}`, {
         name: order.customer_name,
         address: order.delivery_address,
         type: 'customer',
-        orderId: order.id
+        orderId: order.id,
+        dueTime: new Date(order.required_due_time)
       });
     });
     
-    // Add waypoints
+    // Current time tracker for ETAs
+    let currentTime = new Date();
+    let currentDistanceKm = 0;
+    
+    // Process waypoints to generate the route stops HTML
     waypoints.forEach((waypoint, index) => {
-      // In a real implementation, this data would come from the route API
-      // For this demo, we're creating simulated ETAs
-      const eta = new Date();
-      eta.setMinutes(eta.getMinutes() + 10 + (index * 15)); // Simulated time
+      // Skip the first (origin) and last (return to origin) waypoints
+      if (index === 0 || index === waypoints.length - 1) return;
       
-      // Find the matching location
+      // Estimate travel time to this waypoint (simulating route segments)
+      let travelTimeToWaypoint = 10; // default 10 minutes
+      let distanceToWaypoint = 2; // default 2 km
+      
+      if (route && route.waypoints && index < route.waypoints.length) {
+        // If we have real route data, use it
+        if (index > 0 && route.instructions && route.instructions[index-1]) {
+          travelTimeToWaypoint = Math.round(route.instructions[index-1].time / 60);
+          distanceToWaypoint = route.instructions[index-1].distance / 1000;
+        }
+      }
+      
+      // Add travel time to current time for ETA
+      currentTime = new Date(currentTime.getTime() + travelTimeToWaypoint * 60 * 1000);
+      currentDistanceKm += distanceToWaypoint;
+      
+      // Find a matching location from our orders
       let location = null;
-      for (const [key, value] of locationMap.entries()) {
-        // For this demo, we'll just alternate merchant/customer stops
-        if ((index % 2 === 0 && key.startsWith('merchant')) || 
-            (index % 2 === 1 && key.startsWith('customer'))) {
-          if (!location) location = value;
+      let isPickup = true;
+      
+      // For merchant/pickup locations (first half of route)
+      if (index <= waypoints.length / 2) {
+        for (const [key, value] of locationMap.entries()) {
+          if (key.startsWith('merchant-') && !value.visited) {
+            location = value;
+            location.visited = true;
+            isPickup = true;
+            break;
+          }
+        }
+      } 
+      // For customer/delivery locations (second half of route)
+      else {
+        for (const [key, value] of locationMap.entries()) {
+          if (key.startsWith('customer-') && !value.visited) {
+            location = value;
+            location.visited = true;
+            isPickup = false;
+            break;
+          }
         }
       }
       
       if (location) {
+        // Check if this stop will be on time
+        const isOnTime = currentTime <= location.dueTime;
+        const timeDiffMinutes = Math.round((location.dueTime - currentTime) / (1000 * 60));
+        
+        // Add processing time for pickup or delivery
+        const processingTime = isPickup ? 10 : 5; // 10 min for pickup, 5 min for delivery
+        
         routeHTML += `
-          <div class="route-stop stop-${location.type}">
-            <p><strong>Stop ${index + 1}:</strong> ${location.name}</p>
+          <div class="route-stop stop-${location.type} ${isOnTime ? 'on-time' : 'late'}">
+            <p><strong>Stop ${index}:</strong> ${location.name}</p>
             <p>${location.address}</p>
-            <p><small>Order #${location.orderId} - ${location.type.charAt(0).toUpperCase() + location.type.slice(1)}</small></p>
-            <p class="eta">ETA: ${eta.toLocaleTimeString()}</p>
+            <p><small>Order #${location.orderId} - ${isPickup ? 'Pickup' : 'Delivery'}</small></p>
+            <p class="eta">ETA: ${currentTime.toLocaleTimeString()}</p>
+            <p class="time-status">
+              ${isOnTime 
+                ? `<span class="on-time-label">On time (${timeDiffMinutes} minutes to spare)</span>` 
+                : `<span class="late-label">Late by ${Math.abs(timeDiffMinutes)} minutes!</span>`}
+            </p>
+            <p><small>Required by: ${location.dueTime.toLocaleTimeString()}</small></p>
           </div>
         `;
+        
+        // Add processing time to the current time
+        currentTime = new Date(currentTime.getTime() + processingTime * 60 * 1000);
       }
     });
     
     // Add return to origin
+    const returnTravelTime = 15; // Estimated time to return to origin
+    currentTime = new Date(currentTime.getTime() + returnTravelTime * 60 * 1000);
+    
     routeHTML += `
       <div class="route-stop">
-        <p><strong>Return:</strong> ${origin.name}</p>
-        <p><small>Your starting location</small></p>
+        <p><strong>Return:</strong> Your Location</p>
+        <p><small>Estimated return time: ${currentTime.toLocaleTimeString()}</small></p>
       </div>
     `;
     
@@ -966,6 +1305,8 @@ document.addEventListener('DOMContentLoaded', function() {
       <div class="route-summary">
         <p><strong>Total estimated time:</strong> ${totalTime} minutes</p>
         <p><strong>Total distance:</strong> ${totalDistance.toFixed(1)} km</p>
+        <p><strong>Stops:</strong> ${waypoints.length - 2} (${Math.floor((waypoints.length - 2) / 2)} orders)</p>
+        <p><strong>Expected completion:</strong> ${currentTime.toLocaleTimeString()}</p>
       </div>
     `;
   }
