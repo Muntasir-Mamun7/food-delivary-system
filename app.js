@@ -85,69 +85,63 @@ function initializeDatabase() {
       else console.log('Menu items table ready');
     });
 
-    // Create an admin user if it doesn't exist
-    db.get(`SELECT * FROM users WHERE email = ?`, ["admin@admin.com"], (err, row) => {
-      if (err) {
-        console.error('Error checking admin user:', err);
-        return;
-      }
+    // Insert sample users and restaurants
+    insertSampleUsers();
+  });
+}
 
-      console.log("Checking for admin user:", row ? "Admin exists" : "Admin does not exist");
-
-      if (!row) {
-        console.log("Creating admin user...");
-        bcrypt.hash("admin123", 10, (err, hash) => {
-          if (err) {
-            console.error('Error hashing password:', err);
-            return;
-          }
-
-          db.run(`INSERT INTO users (name, email, password, role, address) VALUES (?, ?, ?, ?, ?)`,
-            ["Admin", "admin@admin.com", hash, "admin", "Admin Office"], function(err) {
-              if (err) {
-                console.error('Error creating admin user:', err);
-              } else {
-                console.log('Admin user created successfully with ID:', this.lastID);
-              }
-            });
-        });
-      }
-    });
-
-    // Insert sample users for testing
-    bcrypt.hash("password123", 10, (err, hash) => {
-      if (err) {
-        console.error('Error hashing password:', err);
-        return;
-      }
-
-      // Sample merchant
-      db.run(`INSERT INTO users (name, email, password, role, address) VALUES (?, ?, ?, ?, ?)`,
-        ["Joe's Pizza", "joe@pizza.com", hash, "merchant", "123 Main St"], function(err) {
-          if (err && err.code !== 'SQLITE_CONSTRAINT') {
-            console.error('Error creating sample merchant:', err);
-          }
-        });
-
-      // Sample courier
-      db.run(`INSERT INTO users (name, email, password, role, address) VALUES (?, ?, ?, ?, ?)`,
-        ["Fast Delivery", "courier@fast.com", hash, "courier", "456 Delivery Rd"], function(err) {
-          if (err && err.code !== 'SQLITE_CONSTRAINT') {
-            console.error('Error creating sample courier:', err);
-          }
-        });
-
-      // Sample customer
-      db.run(`INSERT INTO users (name, email, password, role, address) VALUES (?, ?, ?, ?, ?)`,
-        ["John Smith", "john@example.com", hash, "customer", "789 Customer Ave"], function(err) {
-          if (err && err.code !== 'SQLITE_CONSTRAINT') {
-            console.error('Error creating sample customer:', err);
-          }
-        });
-    });
-
-    // Create sample restaurants
+// Insert sample users
+async function insertSampleUsers() {
+  try {
+    // Create admin
+    await createUser("Admin", "admin@admin.com", "admin123", "admin", "Admin Office");
+    
+    // Create sample customer
+    await createUser("John Smith", "john@example.com", "password123", "customer", "789 Customer Ave, Los Angeles, CA");
+    
+    // Create sample courier
+    await createUser("Fast Delivery", "courier@fast.com", "password123", "courier", "456 Delivery Rd, Los Angeles, CA");
+    
+    // Create sample restaurants with menus
     createSampleRestaurants();
+    
+  } catch (error) {
+    console.error("Error inserting sample users:", error);
+  }
+}
+
+// Create a user with given details
+function createUser(name, email, password, role, address) {
+  return new Promise((resolve, reject) => {
+    db.get(`SELECT * FROM users WHERE email = ?`, [email], (err, user) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      
+      if (user) {
+        // User already exists
+        resolve(user);
+        return;
+      }
+      
+      bcrypt.hash(password, 10, (err, hash) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        
+        db.run(`INSERT INTO users (name, email, password, role, address) VALUES (?, ?, ?, ?, ?)`,
+          [name, email, hash, role, address], function(err) {
+            if (err) {
+              reject(err);
+              return;
+            }
+            
+            resolve({ id: this.lastID, name, email, role, address });
+          });
+      });
+    });
   });
 }
 
@@ -195,37 +189,23 @@ function createSampleRestaurants() {
 
   // Add each restaurant and its menu
   restaurants.forEach(restaurant => {
-    bcrypt.hash(restaurant.password, 10, (err, hash) => {
-      if (err) {
-        console.error('Error hashing password:', err);
-        return;
-      }
-
-      // Insert restaurant as a merchant user
-      db.run(`INSERT INTO users (name, email, password, role, address) VALUES (?, ?, ?, ?, ?)`,
-        [restaurant.name, restaurant.email, hash, "merchant", restaurant.address], function(err) {
-          if (err && err.code !== 'SQLITE_CONSTRAINT') {
-            console.error(`Error creating restaurant ${restaurant.name}:`, err);
-            return;
-          }
-          
-          // If restaurant was inserted successfully, add menu items
-          if (this.lastID) {
-            const merchantId = this.lastID;
-            console.log(`Created restaurant: ${restaurant.name} with ID ${merchantId}`);
-            
-            // Insert each menu item
-            restaurant.menu.forEach(item => {
-              db.run(`INSERT INTO menu_items (merchant_id, name, description, price, category) VALUES (?, ?, ?, ?, ?)`,
-                [merchantId, item.name, item.description, item.price, item.category], function(err) {
-                  if (err) {
-                    console.error(`Error creating menu item ${item.name}:`, err);
-                  }
-                });
+    createUser(restaurant.name, restaurant.email, restaurant.password, "merchant", restaurant.address)
+      .then(user => {
+        console.log(`Created restaurant: ${restaurant.name} with ID ${user.id}`);
+        
+        // Insert each menu item
+        restaurant.menu.forEach(item => {
+          db.run(`INSERT INTO menu_items (merchant_id, name, description, price, category) VALUES (?, ?, ?, ?, ?)`,
+            [user.id, item.name, item.description, item.price, item.category], function(err) {
+              if (err) {
+                console.error(`Error creating menu item ${item.name}:`, err);
+              }
             });
-          }
         });
-    });
+      })
+      .catch(err => {
+        console.error(`Error creating restaurant ${restaurant.name}:`, err);
+      });
   });
 }
 
@@ -500,7 +480,7 @@ app.get('/api/orders/available', authenticateToken, authorize(['courier']), (req
     FROM orders o
     JOIN users m ON o.merchant_id = m.id
     JOIN users c ON o.customer_id = c.id
-    WHERE o.status = 'preparing' AND o.courier_id IS NULL
+    WHERE o.status = 'pending' AND o.courier_id IS NULL
     ORDER BY o.required_due_time ASC`,
     (err, orders) => {
       if (err) {
@@ -516,7 +496,7 @@ app.put('/api/orders/:id/accept', authenticateToken, authorize(['courier']), (re
   const orderId = req.params.id;
   const courierId = req.user.id;
   
-  db.run(`UPDATE orders SET courier_id = ?, status = 'accepted' WHERE id = ? AND status = 'preparing'`,
+  db.run(`UPDATE orders SET courier_id = ?, status = 'accepted' WHERE id = ? AND status = 'pending'`,
     [courierId, orderId], function(err) {
       if (err) {
         return res.status(500).json({ message: 'Server error' });
@@ -546,25 +526,6 @@ app.get('/api/orders/courier/active', authenticateToken, authorize(['courier']),
         return res.status(500).json({ message: 'Server error' });
       }
       
-      res.json(orders);
-    }
-  );
-});
-
-// Get courier's active orders with time constraints
-app.get('/api/orders/courier/time-analysis', authenticateToken, authorize(['courier']), (req, res) => {
-  db.all(`
-    SELECT o.*, 
-      m.name as merchant_name, m.address as merchant_address,
-      c.name as customer_name
-    FROM orders o
-    JOIN users m ON o.merchant_id = m.id
-    JOIN users c ON o.customer_id = c.id
-    WHERE o.courier_id = ? AND o.status IN ('accepted', 'out-for-delivery')
-    ORDER BY o.required_due_time ASC`,
-    [req.user.id],
-    (err, orders) => {
-      if (err) return res.status(500).json({ message: 'Server error' });
       res.json(orders);
     }
   );
@@ -602,7 +563,6 @@ app.get('/api/orders/:orderId/time-check', authenticateToken, authorize(['courie
           if (err) return res.status(500).json({ message: 'Server error' });
           
           // Calculate time feasibility (simplified for demo)
-          // In a real implementation, this would use a proper routing algorithm
           const timePerOrder = 30; // minutes per order (average)
           const pickupTime = 10; // minutes for pickup
           const deliveryTime = 10; // minutes for delivery
@@ -644,7 +604,7 @@ app.put('/api/orders/:id/status', authenticateToken, (req, res) => {
   const { status } = req.body;
   
   // Validate status
-  const validStatuses = ['pending', 'preparing', 'accepted', 'out-for-delivery', 'delivered', 'cancelled'];
+  const validStatuses = ['pending', 'accepted', 'out-for-delivery', 'delivered', 'cancelled'];
   
   if (!validStatuses.includes(status)) {
     return res.status(400).json({ message: 'Invalid status' });
@@ -734,6 +694,17 @@ app.get('/api/admin/orders', authenticateToken, authorize(['admin']), (req, res)
       res.json(orders);
     }
   );
+});
+
+// Get all customers (for merchant to select from)
+app.get('/api/customers', authenticateToken, authorize(['merchant']), (req, res) => {
+  db.all(`SELECT id, name, email, address FROM users WHERE role = 'customer'`, (err, customers) => {
+    if (err) {
+      return res.status(500).json({ message: 'Server error' });
+    }
+    
+    res.json(customers);
+  });
 });
 
 // Serve the main application
