@@ -46,6 +46,7 @@ function initializeDatabase() {
       status TEXT DEFAULT 'pending',
       total_price REAL NOT NULL,
       delivery_address TEXT NOT NULL,
+      delivery_notes TEXT,
       required_due_time TIMESTAMP NOT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY(customer_id) REFERENCES users(id),
@@ -67,6 +68,21 @@ function initializeDatabase() {
     )`, (err) => {
       if (err) console.error('Error creating order_items table:', err);
       else console.log('Order items table ready');
+    });
+
+    // Create menu items table
+    db.run(`CREATE TABLE IF NOT EXISTS menu_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      merchant_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      description TEXT,
+      price REAL NOT NULL,
+      category TEXT,
+      image_url TEXT,
+      FOREIGN KEY(merchant_id) REFERENCES users(id)
+    )`, (err) => {
+      if (err) console.error('Error creating menu_items table:', err);
+      else console.log('Menu items table ready');
     });
 
     // Create an admin user if it doesn't exist
@@ -126,6 +142,87 @@ function initializeDatabase() {
         ["John Smith", "john@example.com", hash, "customer", "789 Customer Ave"], function(err) {
           if (err && err.code !== 'SQLITE_CONSTRAINT') {
             console.error('Error creating sample customer:', err);
+          }
+        });
+    });
+
+    // Create sample restaurants
+    createSampleRestaurants();
+  });
+}
+
+// Add sample restaurants
+function createSampleRestaurants() {
+  // Sample restaurants array
+  const restaurants = [
+    {
+      name: "Tasty Burger Joint",
+      email: "burgers@example.com",
+      password: "password123",
+      address: "123 Burger Street, Los Angeles, CA",
+      menu: [
+        { name: "Classic Burger", description: "Beef patty with lettuce, tomato, and special sauce", price: 8.99, category: "Main" },
+        { name: "Cheeseburger", description: "Classic burger with American cheese", price: 9.99, category: "Main" },
+        { name: "French Fries", description: "Crispy golden fries", price: 3.99, category: "Side" },
+        { name: "Chocolate Shake", description: "Rich and creamy chocolate milkshake", price: 4.99, category: "Drink" }
+      ]
+    },
+    {
+      name: "Pizza Paradise",
+      email: "pizza@example.com",
+      password: "password123",
+      address: "456 Pizza Avenue, Los Angeles, CA",
+      menu: [
+        { name: "Margherita Pizza", description: "Classic tomato and mozzarella", price: 12.99, category: "Pizza" },
+        { name: "Pepperoni Pizza", description: "Loaded with pepperoni slices", price: 14.99, category: "Pizza" },
+        { name: "Garlic Bread", description: "Toasted bread with garlic butter", price: 4.99, category: "Side" },
+        { name: "Soda", description: "Various flavors available", price: 1.99, category: "Drink" }
+      ]
+    },
+    {
+      name: "Sushi Express",
+      email: "sushi@example.com",
+      password: "password123",
+      address: "789 Sushi Boulevard, Los Angeles, CA",
+      menu: [
+        { name: "California Roll", description: "Crab, avocado and cucumber", price: 7.99, category: "Roll" },
+        { name: "Salmon Nigiri", description: "Fresh salmon on rice", price: 6.99, category: "Nigiri" },
+        { name: "Miso Soup", description: "Traditional Japanese soup", price: 2.99, category: "Side" },
+        { name: "Green Tea", description: "Hot or cold available", price: 1.99, category: "Drink" }
+      ]
+    }
+  ];
+
+  // Add each restaurant and its menu
+  restaurants.forEach(restaurant => {
+    bcrypt.hash(restaurant.password, 10, (err, hash) => {
+      if (err) {
+        console.error('Error hashing password:', err);
+        return;
+      }
+
+      // Insert restaurant as a merchant user
+      db.run(`INSERT INTO users (name, email, password, role, address) VALUES (?, ?, ?, ?, ?)`,
+        [restaurant.name, restaurant.email, hash, "merchant", restaurant.address], function(err) {
+          if (err && err.code !== 'SQLITE_CONSTRAINT') {
+            console.error(`Error creating restaurant ${restaurant.name}:`, err);
+            return;
+          }
+          
+          // If restaurant was inserted successfully, add menu items
+          if (this.lastID) {
+            const merchantId = this.lastID;
+            console.log(`Created restaurant: ${restaurant.name} with ID ${merchantId}`);
+            
+            // Insert each menu item
+            restaurant.menu.forEach(item => {
+              db.run(`INSERT INTO menu_items (merchant_id, name, description, price, category) VALUES (?, ?, ?, ?, ?)`,
+                [merchantId, item.name, item.description, item.price, item.category], function(err) {
+                  if (err) {
+                    console.error(`Error creating menu item ${item.name}:`, err);
+                  }
+                });
+            });
           }
         });
     });
@@ -275,6 +372,31 @@ app.post('/api/auth/login', (req, res) => {
   });
 });
 
+// Restaurant routes
+app.get('/api/restaurants', (req, res) => {
+  db.all(`SELECT id, name, address FROM users WHERE role = 'merchant'`, (err, restaurants) => {
+    if (err) return res.status(500).json({ message: 'Server error' });
+    res.json(restaurants);
+  });
+});
+
+app.get('/api/restaurants/:id', (req, res) => {
+  const restaurantId = req.params.id;
+  db.get(`SELECT id, name, address FROM users WHERE id = ? AND role = 'merchant'`, [restaurantId], (err, restaurant) => {
+    if (err) return res.status(500).json({ message: 'Server error' });
+    if (!restaurant) return res.status(404).json({ message: 'Restaurant not found' });
+    res.json(restaurant);
+  });
+});
+
+app.get('/api/restaurants/:id/menu', (req, res) => {
+  const restaurantId = req.params.id;
+  db.all(`SELECT * FROM menu_items WHERE merchant_id = ?`, [restaurantId], (err, menuItems) => {
+    if (err) return res.status(500).json({ message: 'Server error' });
+    res.json(menuItems);
+  });
+});
+
 // Order routes
 app.post('/api/orders', authenticateToken, authorize(['merchant']), (req, res) => {
   const { customer_id, items, total_price, delivery_address, required_due_time } = req.body;
@@ -318,6 +440,40 @@ app.post('/api/orders', authenticateToken, authorize(['merchant']), (req, res) =
       }
     );
   });
+});
+
+// Customer places an order
+app.post('/api/orders/customer', authenticateToken, authorize(['customer']), (req, res) => {
+  const { merchant_id, items, total_price, delivery_address, delivery_notes, required_due_time } = req.body;
+  const customer_id = req.user.id;
+  
+  // Validate input
+  if (!merchant_id || !items || !items.length || !total_price || !delivery_address || !required_due_time) {
+    return res.status(400).json({ message: 'All fields are required' });
+  }
+  
+  // Insert order
+  db.run(`INSERT INTO orders (customer_id, merchant_id, total_price, delivery_address, delivery_notes, required_due_time, status) 
+    VALUES (?, ?, ?, ?, ?, ?, 'pending')`,
+    [customer_id, merchant_id, total_price, delivery_address, delivery_notes, required_due_time], function(err) {
+      if (err) {
+        return res.status(500).json({ message: 'Server error' });
+      }
+      
+      const order_id = this.lastID;
+      
+      // Insert order items
+      const insertItem = db.prepare(`INSERT INTO order_items (order_id, name, price, quantity) VALUES (?, ?, ?, ?)`);
+      
+      for (const item of items) {
+        insertItem.run([order_id, item.name, item.price, item.quantity]);
+      }
+      
+      insertItem.finalize();
+      
+      res.status(201).json({ message: 'Order created', order_id });
+    }
+  );
 });
 
 app.get('/api/orders/merchant', authenticateToken, authorize(['merchant']), (req, res) => {
@@ -385,82 +541,6 @@ app.get('/api/orders/courier/active', authenticateToken, authorize(['courier']),
     WHERE o.courier_id = ? AND o.status IN ('accepted', 'out-for-delivery')
     ORDER BY o.required_due_time ASC`,
     [req.user.id],
-    (err, orders) => {
-      if (err) {
-        return res.status(500).json({ message: 'Server error' });
-      }
-      
-      res.json(orders);
-    }
-  );
-});
-
-app.put('/api/orders/:id/status', authenticateToken, (req, res) => {
-  const orderId = req.params.id;
-  const { status } = req.body;
-  
-  // Validate status
-  const validStatuses = ['pending', 'preparing', 'accepted', 'out-for-delivery', 'delivered', 'cancelled'];
-  
-  if (!validStatuses.includes(status)) {
-    return res.status(400).json({ message: 'Invalid status' });
-  }
-  
-  // Verify user has permission to update this order
-  let query;
-  let params;
-  
-  if (req.user.role === 'merchant') {
-    query = `UPDATE orders SET status = ? 
-      WHERE id = ? AND merchant_id = ? 
-      AND status NOT IN ('accepted', 'out-for-delivery', 'delivered')`;
-    params = [status, orderId, req.user.id];
-  } else if (req.user.role === 'courier') {
-    query = `UPDATE orders SET status = ? 
-      WHERE id = ? AND courier_id = ? 
-      AND status IN ('accepted', 'out-for-delivery')`;
-    params = [status, orderId, req.user.id];
-  } else if (req.user.role === 'admin') {
-    query = `UPDATE orders SET status = ? WHERE id = ?`;
-    params = [status, orderId];
-  } else {
-    return res.status(403).json({ message: 'Insufficient permissions' });
-  }
-  
-  db.run(query, params, function(err) {
-    if (err) {
-      return res.status(500).json({ message: 'Server error' });
-    }
-    
-    if (this.changes === 0) {
-      return res.status(400).json({ message: 'Could not update order' });
-    }
-    
-    res.json({ message: 'Order updated' });
-  });
-});
-
-// Admin routes
-app.get('/api/admin/users', authenticateToken, authorize(['admin']), (req, res) => {
-  db.all(`SELECT id, name, email, role, address, created_at FROM users`, (err, users) => {
-    if (err) {
-      return res.status(500).json({ message: 'Server error' });
-    }
-    
-    res.json(users);
-  });
-});
-
-app.get('/api/admin/orders', authenticateToken, authorize(['admin']), (req, res) => {
-  db.all(`SELECT o.*, 
-    m.name as merchant_name, 
-    c.name as customer_name,
-    co.name as courier_name
-    FROM orders o
-    JOIN users m ON o.merchant_id = m.id
-    JOIN users c ON o.customer_id = c.id
-    LEFT JOIN users co ON o.courier_id = co.id
-    ORDER BY o.created_at DESC`,
     (err, orders) => {
       if (err) {
         return res.status(500).json({ message: 'Server error' });
@@ -559,7 +639,52 @@ app.get('/api/orders/:orderId/time-check', authenticateToken, authorize(['courie
   );
 });
 
-// Customer routes
+app.put('/api/orders/:id/status', authenticateToken, (req, res) => {
+  const orderId = req.params.id;
+  const { status } = req.body;
+  
+  // Validate status
+  const validStatuses = ['pending', 'preparing', 'accepted', 'out-for-delivery', 'delivered', 'cancelled'];
+  
+  if (!validStatuses.includes(status)) {
+    return res.status(400).json({ message: 'Invalid status' });
+  }
+  
+  // Verify user has permission to update this order
+  let query;
+  let params;
+  
+  if (req.user.role === 'merchant') {
+    query = `UPDATE orders SET status = ? 
+      WHERE id = ? AND merchant_id = ? 
+      AND status NOT IN ('accepted', 'out-for-delivery', 'delivered')`;
+    params = [status, orderId, req.user.id];
+  } else if (req.user.role === 'courier') {
+    query = `UPDATE orders SET status = ? 
+      WHERE id = ? AND courier_id = ? 
+      AND status IN ('accepted', 'out-for-delivery')`;
+    params = [status, orderId, req.user.id];
+  } else if (req.user.role === 'admin') {
+    query = `UPDATE orders SET status = ? WHERE id = ?`;
+    params = [status, orderId];
+  } else {
+    return res.status(403).json({ message: 'Insufficient permissions' });
+  }
+  
+  db.run(query, params, function(err) {
+    if (err) {
+      return res.status(500).json({ message: 'Server error' });
+    }
+    
+    if (this.changes === 0) {
+      return res.status(400).json({ message: 'Could not update order' });
+    }
+    
+    res.json({ message: 'Order updated' });
+  });
+});
+
+// Get customer orders
 app.get('/api/orders/customer', authenticateToken, authorize(['customer']), (req, res) => {
   db.all(`SELECT o.*, 
     m.name as merchant_name,
@@ -570,6 +695,37 @@ app.get('/api/orders/customer', authenticateToken, authorize(['customer']), (req
     WHERE o.customer_id = ?
     ORDER BY o.created_at DESC`,
     [req.user.id],
+    (err, orders) => {
+      if (err) {
+        return res.status(500).json({ message: 'Server error' });
+      }
+      
+      res.json(orders);
+    }
+  );
+});
+
+// Admin routes
+app.get('/api/admin/users', authenticateToken, authorize(['admin']), (req, res) => {
+  db.all(`SELECT id, name, email, role, address, created_at FROM users`, (err, users) => {
+    if (err) {
+      return res.status(500).json({ message: 'Server error' });
+    }
+    
+    res.json(users);
+  });
+});
+
+app.get('/api/admin/orders', authenticateToken, authorize(['admin']), (req, res) => {
+  db.all(`SELECT o.*, 
+    m.name as merchant_name, 
+    c.name as customer_name,
+    co.name as courier_name
+    FROM orders o
+    JOIN users m ON o.merchant_id = m.id
+    JOIN users c ON o.customer_id = c.id
+    LEFT JOIN users co ON o.courier_id = co.id
+    ORDER BY o.created_at DESC`,
     (err, orders) => {
       if (err) {
         return res.status(500).json({ message: 'Server error' });
