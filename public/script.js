@@ -5,20 +5,14 @@ document.addEventListener('DOMContentLoaded', function() {
   let currentUser = JSON.parse(localStorage.getItem('user'));
   
   // Map related global variables
-  let simpleMap;
-  let merchantMap;
-  let customerMap;
-  let markers = [];
   let activeOrders = [];
   let availableOrders = [];
   
-  // Default location coordinates for the map (will be used with SimpleMap)
+  // Default location coordinates for the map (will be used for display purposes only)
   let selectedDeliveryLat = 0;
   let selectedDeliveryLng = 0;
   let selectedCustomerLat = 0;
   let selectedCustomerLng = 0;
-  let deliveryMarker = null;
-  let customerDeliveryMarker = null;
   
   // Customer shopping cart
   let currentRestaurant = null;
@@ -241,8 +235,28 @@ document.addEventListener('DOMContentLoaded', function() {
     const addItemBtn = document.getElementById('add-item-btn');
     const orderItemsContainer = document.getElementById('order-items');
     
-    // Initialize merchant map
-    initializeMerchantMap();
+    // Simulate click handler for merchant map
+    const merchantMap = document.getElementById('merchant-map');
+    if (merchantMap) {
+      merchantMap.addEventListener('click', function(e) {
+        // Get click position relative to the map
+        const rect = merchantMap.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        
+        // Calculate percentage
+        const xPercent = x / rect.width;
+        const yPercent = y / rect.height;
+        
+        // Convert to coordinates (assuming 1000x600 coordinate system)
+        selectedDeliveryLat = Math.round(xPercent * 1000);
+        selectedDeliveryLng = Math.round(yPercent * 600);
+        
+        // Update display
+        document.getElementById('delivery-lat').textContent = selectedDeliveryLat;
+        document.getElementById('delivery-lng').textContent = selectedDeliveryLng;
+      });
+    }
     
     // Add new item row
     addItemBtn.addEventListener('click', function() {
@@ -304,15 +318,6 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Reset form and reload orders
         createOrderForm.reset();
-        
-        // Reset the map marker
-        merchantMap.clearMarkers();
-        
-        // Add restaurant marker
-        merchantMap.addLocationMarker(LocationData.locations.restaurant, {
-          color: '#4CAF50' // Green
-        });
-        
         document.getElementById('delivery-lat').textContent = '0';
         document.getElementById('delivery-lng').textContent = '0';
         selectedDeliveryLat = 0;
@@ -338,51 +343,6 @@ document.addEventListener('DOMContentLoaded', function() {
       } catch (error) {
         alert(`Error creating order: ${error.message}`);
       }
-    });
-  }
-  
-  // Initialize merchant map
-  function initializeMerchantMap() {
-    const mapElement = document.getElementById('merchant-map');
-    if (!mapElement) return;
-    
-    // Initialize SimpleMap
-    merchantMap = new SimpleMap('merchant-map');
-    
-    // Show the restaurant location
-    merchantMap.addLocationMarker(LocationData.locations.restaurant, {
-      color: '#4CAF50' // Green
-    });
-    
-    // Add click handler to set delivery location
-    merchantMap.onClick(function(position) {
-      // Convert from percentage to actual coordinates
-      const x = (position.x / 100) * 1000;
-      const y = (position.y / 100) * 600;
-      
-      // Store selected coordinates
-      selectedDeliveryLat = x;
-      selectedDeliveryLng = y;
-      
-      // Remove previous marker if exists
-      merchantMap.clearMarkers();
-      
-      // Add restaurant marker
-      merchantMap.addLocationMarker(LocationData.locations.restaurant, {
-        color: '#4CAF50' // Green
-      });
-      
-      // Add delivery marker
-      merchantMap.addMarker({
-        x: position.x,
-        y: position.y,
-        title: 'Delivery Location',
-        color: '#FF5722' // Orange
-      });
-      
-      // Update display
-      document.getElementById('delivery-lat').textContent = x.toFixed(1);
-      document.getElementById('delivery-lng').textContent = y.toFixed(1);
     });
   }
   
@@ -449,9 +409,6 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Courier Dashboard
   function loadCourierDashboard() {
-    // Initialize map first
-    setupMap();
-    
     // Load available orders
     loadAvailableOrders();
     
@@ -463,27 +420,11 @@ document.addEventListener('DOMContentLoaded', function() {
       if (currentUser && currentUser.role === 'courier') {
         loadAvailableOrders();
         loadActiveOrders();
-        showAvailableOrdersOnMap();
         loadActiveOrdersWithLocations();
       } else {
         clearInterval(refreshInterval);
       }
     }, 30000);
-  }
-  
-  // Set up the map
-  function setupMap() {
-    const mapElement = document.getElementById('courier-map');
-    if (!mapElement) return;
-    
-    // Initialize SimpleMap
-    simpleMap = new SimpleMap('courier-map');
-    
-    // If the courier has active orders, load them and display on map
-    if (currentUser && currentUser.role === 'courier') {
-      loadActiveOrdersWithLocations();
-      showAvailableOrdersOnMap();
-    }
   }
   
   async function loadAvailableOrders() {
@@ -535,78 +476,18 @@ document.addEventListener('DOMContentLoaded', function() {
             await apiCall(`/api/orders/${orderId}/accept`, 'PUT');
             loadAvailableOrders();
             loadActiveOrders();
-            showAvailableOrdersOnMap();
             loadActiveOrdersWithLocations();
           } catch (error) {
             alert(`Error accepting order: ${error.message}`);
           }
         });
       });
-      
-      // Show available orders on map
-      showAvailableOrdersOnMap();
       
     } catch (error) {
       console.error('Error loading available orders:', error);
       document.getElementById('available-orders').innerHTML = 
         `<p class="error-message">Error loading orders: ${error.message}</p>`;
     }
-  }
-  
-  // Display available orders on map
-  function showAvailableOrdersOnMap() {
-    if (!simpleMap) return;
-    
-    // Clear existing markers
-    simpleMap.clearMarkers();
-    simpleMap.clearLines();
-    
-    // Add restaurant marker
-    simpleMap.addLocationMarker(LocationData.locations.restaurant);
-    
-    // Add markers for available orders
-    availableOrders.forEach(order => {
-      // Generate customer ID based on order ID modulo 8
-      const customerId = `customer${order.id % 8 + 1}`;
-      const customerLocation = LocationData.locations[customerId];
-      
-      // Skip if location not found
-      if (!customerLocation) return;
-      
-      const popupContent = `
-        <div class="popup-content">
-          <h4>Order #${order.id}</h4>
-          <p><strong>Customer:</strong> ${customerLocation.name}</p>
-          <p><strong>Address:</strong> ${LocationData.getAddressForLocation(customerId)}</p>
-          <p><strong>Required By:</strong> ${new Date(order.required_due_time).toLocaleString()}</p>
-          <p><strong>Total:</strong> $${order.total_price.toFixed(2)}</p>
-          <button class="popup-accept-btn" data-id="${order.id}">Accept Order</button>
-        </div>
-      `;
-      
-      simpleMap.addLocationMarker(customerLocation, {
-        popup: popupContent
-      });
-    });
-    
-    // Add event listeners to popup buttons
-    setTimeout(() => {
-      document.querySelectorAll('.popup-accept-btn').forEach(btn => {
-        btn.addEventListener('click', async function() {
-          const orderId = this.getAttribute('data-id');
-          
-          try {
-            await apiCall(`/api/orders/${orderId}/accept`, 'PUT');
-            simpleMap.hidePopup();
-            loadAvailableOrders();
-            loadActiveOrders();
-            loadActiveOrdersWithLocations();
-          } catch (error) {
-            alert(`Error accepting order: ${error.message}`);
-          }
-        });
-      });
-    }, 100);
   }
   
   async function loadActiveOrders() {
@@ -665,6 +546,9 @@ document.addEventListener('DOMContentLoaded', function() {
         });
       });
       
+      // Load route planning info
+      loadActiveOrdersWithLocations();
+      
     } catch (error) {
       console.error('Error loading active orders:', error);
       document.getElementById('active-orders').innerHTML = 
@@ -672,19 +556,12 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
   
-  // Load active orders and display on map
+  // Load active orders and show route info (no map interaction)
   async function loadActiveOrdersWithLocations() {
     try {
-      // Check if map exists
-      if (!simpleMap) return;
-      
       // Get active orders
       const orders = await apiCall('/api/orders/courier/active');
       activeOrders = orders;
-      
-      // Clear existing markers and lines
-      simpleMap.clearMarkers();
-      simpleMap.clearLines();
       
       if (orders.length === 0) {
         if (document.getElementById('route-stops')) {
@@ -710,30 +587,6 @@ document.addEventListener('DOMContentLoaded', function() {
       // Get optimized route using the route planner
       const routeResult = routePlanner.planRoute(ordersForRouting, 'restaurant');
       
-      // Get locations for the route
-      const routeLocations = routeResult.route.map(stop => {
-        return LocationData.locations[stop.locationId];
-      });
-      
-      // Add restaurant marker
-      simpleMap.addLocationMarker(LocationData.locations.restaurant, { 
-        title: 'Restaurant',
-        color: '#4CAF50' // Green
-      });
-      
-      // Add customer markers for each order
-      ordersForRouting.forEach((order, index) => {
-        const customerLocation = LocationData.locations[order.customerId];
-        
-        simpleMap.addLocationMarker(customerLocation, {
-          title: `Customer ${index + 1}`,
-          color: '#2196F3' // Blue
-        });
-      });
-      
-      // Draw the route on the map
-      simpleMap.drawRoute(routeLocations);
-      
       // Display route information in the sidebar
       renderRouteInfo(routeResult, ordersForRouting);
       
@@ -746,7 +599,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
   
-  // Display route information in the sidebar
+  // Display route information in the sidebar without relying on map
   function renderRouteInfo(routeResult, orders) {
     const routeStopsElement = document.getElementById('route-stops');
     const estimatedTimesElement = document.getElementById('estimated-times');
@@ -777,7 +630,8 @@ document.addEventListener('DOMContentLoaded', function() {
         // Find the order details
         const order = orders.find(o => o.id.toString() === stop.orderId.toString());
         if (order) {
-          details = `${order.customer_name || LocationData.locations[order.customerId].name}, Order #${order.id}`;
+          const customerId = order.customerId || `customer${order.id % 8 + 1}`;
+          details = `${order.customer_name || LocationData.locations[customerId].name}, Order #${order.id}`;
         } else {
           details = `Order #${stop.orderId}`;
         }
@@ -798,11 +652,10 @@ document.addEventListener('DOMContentLoaded', function() {
     // Update the DOM
     routeStopsElement.innerHTML = routeHTML;
     
-    // Display total estimated time and distance
+    // Display total estimated time
     estimatedTimesElement.innerHTML = `
       <div class="route-summary">
         <p><strong>Total estimated time:</strong> ${routeResult.totalTime} minutes</p>
-        <p><strong>Total distance:</strong> ${routeResult.totalDistance.toFixed(1)} units</p>
       </div>
     `;
   }
@@ -829,6 +682,29 @@ document.addEventListener('DOMContentLoaded', function() {
     const placeOrderBtn = document.getElementById('place-order-btn');
     if (placeOrderBtn) {
       placeOrderBtn.addEventListener('click', placeOrder);
+    }
+    
+    // Simulate click handler for customer map
+    const customerMap = document.getElementById('customer-map');
+    if (customerMap) {
+      customerMap.addEventListener('click', function(e) {
+        // Get click position relative to the map
+        const rect = customerMap.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        
+        // Calculate percentage
+        const xPercent = x / rect.width;
+        const yPercent = y / rect.height;
+        
+        // Convert to coordinates (assuming 1000x600 coordinate system)
+        selectedCustomerLat = Math.round(xPercent * 1000);
+        selectedCustomerLng = Math.round(yPercent * 600);
+        
+        // Update display
+        document.getElementById('customer-lat').textContent = selectedCustomerLat;
+        document.getElementById('customer-lng').textContent = selectedCustomerLng;
+      });
     }
   }
   
@@ -890,9 +766,6 @@ document.addEventListener('DOMContentLoaded', function() {
       
       // Reset cart
       resetCart();
-      
-      // Initialize customer map
-      initializeCustomerMap();
       
       // Update restaurant name
       restaurantNameElement.textContent = restaurantName;
@@ -966,51 +839,6 @@ document.addEventListener('DOMContentLoaded', function() {
       document.getElementById('restaurant-menu').innerHTML = 
         `<p class="error-message">Error loading menu: ${error.message}</p>`;
     }
-  }
-  
-  // Initialize customer map
-  function initializeCustomerMap() {
-    const mapElement = document.getElementById('customer-map');
-    if (!mapElement) return;
-    
-    // Initialize SimpleMap
-    customerMap = new SimpleMap('customer-map');
-    
-    // Show the restaurant location
-    customerMap.addLocationMarker(LocationData.locations.restaurant, {
-      color: '#4CAF50' // Green
-    });
-    
-    // Add click handler to set delivery location
-    customerMap.onClick(function(position) {
-      // Convert from percentage to actual coordinates
-      const x = (position.x / 100) * 1000;
-      const y = (position.y / 100) * 600;
-      
-      // Store selected coordinates
-      selectedCustomerLat = x;
-      selectedCustomerLng = y;
-      
-      // Remove previous marker if exists
-      customerMap.clearMarkers();
-      
-      // Add restaurant marker
-      customerMap.addLocationMarker(LocationData.locations.restaurant, {
-        color: '#4CAF50' // Green
-      });
-      
-      // Add delivery marker
-      customerMap.addMarker({
-        x: position.x,
-        y: position.y,
-        title: 'Your Delivery Location',
-        color: '#FF5722' // Orange
-      });
-      
-      // Update display
-      document.getElementById('customer-lat').textContent = x.toFixed(1);
-      document.getElementById('customer-lng').textContent = y.toFixed(1);
-    });
   }
   
   function addToCart(itemId, itemName, itemPrice) {
@@ -1151,10 +979,11 @@ document.addEventListener('DOMContentLoaded', function() {
       document.getElementById('restaurant-menu-section').classList.add('hidden');
       currentRestaurant = null;
       
-      // Reset map marker
-      if (customerMap) {
-        customerMap.clearMarkers();
-      }
+      // Reset coordinates
+      selectedCustomerLat = 0;
+      selectedCustomerLng = 0;
+      document.getElementById('customer-lat').textContent = '0';
+      document.getElementById('customer-lng').textContent = '0';
       
       // Reload customer orders
       loadCustomerOrders();
@@ -1293,25 +1122,11 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
   
-  // Initialize map when document is ready
-  function initializeMap() {
-    if (currentUser) {
-      if (currentUser.role === 'courier' && document.getElementById('courier-map')) {
-        setupMap();
-      } else if (currentUser.role === 'merchant' && document.getElementById('merchant-map')) {
-        initializeMerchantMap();
-      }
-    }
-  }
-  
-  // Initialize map when document is ready
-  setTimeout(initializeMap, 1000);
-  
   // Update footer with current date and time
   const footer = document.querySelector('footer');
   if (footer) {
     footer.innerHTML = `
-      <p>Current Date and Time (UTC): 2025-06-09 01:14:55</p>
+      <p>Current Date and Time (UTC): 2025-06-09 02:07:21</p>
       <p>User: Muntasir-Mamun7</p>
     `;
   }
