@@ -472,11 +472,14 @@ document.addEventListener('DOMContentLoaded', function() {
         const orderCard = document.createElement('div');
         orderCard.className = 'order-card';
         
-        // Generate customer ID based on order ID modulo 8
+        // Use customer_location_id if available, otherwise use modulo
         const customerId = order.customer_location_id || `customer${order.id % 8 + 1}`;
         
-        // Get estimated delivery time using our route planner
-        const eta = routePlanner.estimateDeliveryTime(order);
+        // Get estimated delivery time using our route planner with correct customer ID
+        const eta = routePlanner.estimateDeliveryTime({
+          ...order,
+          customer_location_id: customerId
+        });
         
         orderCard.innerHTML = `
           <h4>Order #${order.id}</h4>
@@ -1178,8 +1181,8 @@ document.addEventListener('DOMContentLoaded', function() {
   const footer = document.querySelector('footer');
   if (footer) {
     footer.innerHTML = `
-      <p>Current Date and Time (UTC): 2025-06-09 02:16:57</p>
-      <p>User: Muntasir-Mamun7</p>
+      <p>Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): 2025-06-09 02:36:32</p>
+      <p>Current User's Login: Muntasir-Mamun7</p>
     `;
   }
   
