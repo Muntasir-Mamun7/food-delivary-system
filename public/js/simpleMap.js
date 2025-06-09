@@ -30,11 +30,11 @@ class SimpleMap {
     
     // Try multiple possible paths (adjust as needed for your server setup)
     // Option 1: Relative to current HTML file
-    this.mapImage.src = 'images/citymap.jpg';
+    //this.mapImage.src = 'images/citymap.jpg';
     
     // Option 2: From server root
     // Uncomment the next line if Option 1 doesn't work
-    // this.mapImage.src = '/images/citymap.jpg';
+    this.mapImage.src = '/images/citymap.jpg';
     
     // Option 3: Relative to JS file in subdirectory
     // Uncomment the next line if Options 1 and 2 don't work
