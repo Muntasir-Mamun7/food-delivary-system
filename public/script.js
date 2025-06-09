@@ -4,11 +4,11 @@ document.addEventListener('DOMContentLoaded', function() {
   let token = localStorage.getItem('token');
   let currentUser = JSON.parse(localStorage.getItem('user'));
   
-  // Map related global variables
+  // Order related global variables
   let activeOrders = [];
   let availableOrders = [];
   
-  // Default location coordinates for the map (will be used for display purposes only)
+  // Default location coordinates (used for data only, no map)
   let selectedDeliveryLat = 0;
   let selectedDeliveryLng = 0;
   let selectedCustomerLat = 0;
@@ -235,27 +235,45 @@ document.addEventListener('DOMContentLoaded', function() {
     const addItemBtn = document.getElementById('add-item-btn');
     const orderItemsContainer = document.getElementById('order-items');
     
-    // Simulate click handler for merchant map
-    const merchantMap = document.getElementById('merchant-map');
-    if (merchantMap) {
-      merchantMap.addEventListener('click', function(e) {
-        // Get click position relative to the map
-        const rect = merchantMap.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        
-        // Calculate percentage
-        const xPercent = x / rect.width;
-        const yPercent = y / rect.height;
-        
-        // Convert to coordinates (assuming 1000x600 coordinate system)
-        selectedDeliveryLat = Math.round(xPercent * 1000);
-        selectedDeliveryLng = Math.round(yPercent * 600);
-        
-        // Update display
-        document.getElementById('delivery-lat').textContent = selectedDeliveryLat;
-        document.getElementById('delivery-lng').textContent = selectedDeliveryLng;
-      });
+    // Remove map container if exists
+    const mapContainer = document.getElementById('merchant-map-container');
+    if (mapContainer) {
+      mapContainer.innerHTML = `
+        <div class="form-group">
+          <label for="customer-location">Select Customer Location:</label>
+          <select id="customer-location" class="form-control" required>
+            <option value="">-- Select Customer Location --</option>
+            <option value="customer1">Customer 1 - 123 Main St</option>
+            <option value="customer2">Customer 2 - 456 Oak Ave</option>
+            <option value="customer3">Customer 3 - 789 Maple Dr</option>
+            <option value="customer4">Customer 4 - 321 Pine Rd</option>
+            <option value="customer5">Customer 5 - 654 Cedar Ln</option>
+            <option value="customer6">Customer 6 - 987 Elm Blvd</option>
+            <option value="customer7">Customer 7 - 135 Birch Way</option>
+            <option value="customer8">Customer 8 - 246 Walnut Ct</option>
+          </select>
+          <p><small>Estimated delivery time from restaurant: <span id="delivery-time-estimate">0</span> minutes</small></p>
+        </div>
+      `;
+      
+      // Add change listener to update delivery time estimate
+      const customerLocationSelect = document.getElementById('customer-location');
+      if (customerLocationSelect) {
+        customerLocationSelect.addEventListener('change', function() {
+          const selectedLocation = this.value;
+          if (selectedLocation) {
+            const travelTime = LocationData.getTravelTime('restaurant', selectedLocation);
+            document.getElementById('delivery-time-estimate').textContent = travelTime;
+            
+            // Set coordinates for the backend (just for data storage)
+            const locationData = LocationData.locations[selectedLocation];
+            if (locationData) {
+              selectedDeliveryLat = locationData.x;
+              selectedDeliveryLng = locationData.y;
+            }
+          }
+        });
+      }
     }
     
     // Add new item row
@@ -285,9 +303,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const customerId = document.getElementById('customer-id').value;
         const deliveryAddress = document.getElementById('delivery-address').value;
         const dueTime = document.getElementById('due-time').value;
+        const customerLocation = document.getElementById('customer-location')?.value;
         
-        if (!selectedDeliveryLat || !selectedDeliveryLng) {
-          alert('Please select a delivery location on the map.');
+        if (!customerLocation) {
+          alert('Please select a customer location.');
           return;
         }
         
@@ -305,23 +324,23 @@ document.addEventListener('DOMContentLoaded', function() {
           totalPrice += price * quantity;
         });
         
+        // Get location coordinates
+        const locationData = LocationData.locations[customerLocation];
+        
         // Create order
         await apiCall('/api/orders', 'POST', {
           customer_id: customerId,
           items,
           total_price: totalPrice,
           delivery_address: deliveryAddress,
-          delivery_lat: selectedDeliveryLat,
-          delivery_lng: selectedDeliveryLng,
-          required_due_time: dueTime
+          delivery_lat: locationData ? locationData.x : 0,
+          delivery_lng: locationData ? locationData.y : 0,
+          required_due_time: dueTime,
+          customer_location_id: customerLocation // Add location ID for reference
         });
         
         // Reset form and reload orders
         createOrderForm.reset();
-        document.getElementById('delivery-lat').textContent = '0';
-        document.getElementById('delivery-lng').textContent = '0';
-        selectedDeliveryLat = 0;
-        selectedDeliveryLng = 0;
         
         // Keep only one item row
         while (orderItemsContainer.children.length > 1) {
@@ -335,6 +354,8 @@ document.addEventListener('DOMContentLoaded', function() {
           firstItemRow.querySelector('.item-price').value = '';
           firstItemRow.querySelector('.item-quantity').value = '1';
         }
+        
+        document.getElementById('delivery-time-estimate').textContent = '0';
         
         loadMerchantOrders();
         
@@ -363,8 +384,9 @@ document.addEventListener('DOMContentLoaded', function() {
         orderCard.className = 'order-card';
         
         // For demo purposes, use pre-defined customer addresses
-        const customerId = `customer${order.id % 8 + 1}`;
+        const customerId = order.customer_location_id || `customer${order.id % 8 + 1}`;
         const customerAddress = LocationData.getAddressForLocation(customerId);
+        const travelTime = LocationData.getTravelTime('restaurant', customerId);
         
         orderCard.innerHTML = `
           <h4>Order #${order.id}</h4>
@@ -374,6 +396,7 @@ document.addEventListener('DOMContentLoaded', function() {
             <p><strong>Required By:</strong> ${new Date(order.required_due_time).toLocaleString()}</p>
             <p><strong>Status:</strong> ${order.status}</p>
             <p><strong>Total Price:</strong> $${order.total_price.toFixed(2)}</p>
+            <p><strong>Estimated Delivery Time:</strong> ${travelTime} minutes</p>
             ${order.courier_name ? `<p><strong>Courier:</strong> ${order.courier_name}</p>` : ''}
           </div>
           <div class="order-card-actions">
@@ -415,6 +438,12 @@ document.addEventListener('DOMContentLoaded', function() {
     // Load active orders
     loadActiveOrders();
     
+    // Remove map container if exists
+    const mapContainer = document.getElementById('courier-map');
+    if (mapContainer) {
+      mapContainer.style.display = 'none';
+    }
+    
     // Refresh data every 30 seconds
     const refreshInterval = setInterval(() => {
       if (currentUser && currentUser.role === 'courier') {
@@ -444,7 +473,7 @@ document.addEventListener('DOMContentLoaded', function() {
         orderCard.className = 'order-card';
         
         // Generate customer ID based on order ID modulo 8
-        const customerId = `customer${order.id % 8 + 1}`;
+        const customerId = order.customer_location_id || `customer${order.id % 8 + 1}`;
         
         // Get estimated delivery time using our route planner
         const eta = routePlanner.estimateDeliveryTime(order);
@@ -504,7 +533,7 @@ document.addEventListener('DOMContentLoaded', function() {
       
       orders.forEach(order => {
         // Generate customer ID based on order ID modulo 8
-        const customerId = `customer${order.id % 8 + 1}`;
+        const customerId = order.customer_location_id || `customer${order.id % 8 + 1}`;
         
         const orderCard = document.createElement('div');
         orderCard.className = 'order-card';
@@ -518,6 +547,7 @@ document.addEventListener('DOMContentLoaded', function() {
             <p><strong>Delivery Address:</strong> ${LocationData.getAddressForLocation(customerId)}</p>
             <p><strong>Required By:</strong> ${new Date(order.required_due_time).toLocaleString()}</p>
             <p><strong>Status:</strong> ${order.status}</p>
+            <p><strong>Travel Time:</strong> ${LocationData.getTravelTime('restaurant', customerId)} minutes</p>
           </div>
           <div class="order-card-actions">
             ${order.status === 'accepted' ? 
@@ -577,7 +607,7 @@ document.addEventListener('DOMContentLoaded', function() {
       const ordersForRouting = orders.map(order => {
         return {
           id: order.id,
-          customerId: `customer${order.id % 8 + 1}`,
+          customerId: order.customer_location_id || `customer${order.id % 8 + 1}`,
           required_due_time: order.required_due_time,
           customer_name: order.customer_name,
           status: order.status
@@ -630,7 +660,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Find the order details
         const order = orders.find(o => o.id.toString() === stop.orderId.toString());
         if (order) {
-          const customerId = order.customerId || `customer${order.id % 8 + 1}`;
+          const customerId = order.customerId;
           details = `${order.customer_name || LocationData.locations[customerId].name}, Order #${order.id}`;
         } else {
           details = `Order #${stop.orderId}`;
@@ -684,27 +714,45 @@ document.addEventListener('DOMContentLoaded', function() {
       placeOrderBtn.addEventListener('click', placeOrder);
     }
     
-    // Simulate click handler for customer map
-    const customerMap = document.getElementById('customer-map');
-    if (customerMap) {
-      customerMap.addEventListener('click', function(e) {
-        // Get click position relative to the map
-        const rect = customerMap.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        
-        // Calculate percentage
-        const xPercent = x / rect.width;
-        const yPercent = y / rect.height;
-        
-        // Convert to coordinates (assuming 1000x600 coordinate system)
-        selectedCustomerLat = Math.round(xPercent * 1000);
-        selectedCustomerLng = Math.round(yPercent * 600);
-        
-        // Update display
-        document.getElementById('customer-lat').textContent = selectedCustomerLat;
-        document.getElementById('customer-lng').textContent = selectedCustomerLng;
-      });
+    // Remove map container if exists
+    const mapContainer = document.getElementById('customer-map-container');
+    if (mapContainer) {
+      mapContainer.innerHTML = `
+        <div class="form-group">
+          <label for="customer-delivery-location">Select Your Delivery Location:</label>
+          <select id="customer-delivery-location" class="form-control" required>
+            <option value="">-- Select Delivery Location --</option>
+            <option value="customer1">Location 1 - 123 Main St</option>
+            <option value="customer2">Location 2 - 456 Oak Ave</option>
+            <option value="customer3">Location 3 - 789 Maple Dr</option>
+            <option value="customer4">Location 4 - 321 Pine Rd</option>
+            <option value="customer5">Location 5 - 654 Cedar Ln</option>
+            <option value="customer6">Location 6 - 987 Elm Blvd</option>
+            <option value="customer7">Location 7 - 135 Birch Way</option>
+            <option value="customer8">Location 8 - 246 Walnut Ct</option>
+          </select>
+          <p><small>Estimated delivery time: <span id="customer-delivery-time">0</span> minutes</small></p>
+        </div>
+      `;
+      
+      // Add change listener to update delivery time estimate
+      const deliveryLocationSelect = document.getElementById('customer-delivery-location');
+      if (deliveryLocationSelect) {
+        deliveryLocationSelect.addEventListener('change', function() {
+          const selectedLocation = this.value;
+          if (selectedLocation) {
+            const travelTime = LocationData.getTravelTime('restaurant', selectedLocation);
+            document.getElementById('customer-delivery-time').textContent = travelTime;
+            
+            // Set coordinates for the backend (just for data storage)
+            const locationData = LocationData.locations[selectedLocation];
+            if (locationData) {
+              selectedCustomerLat = locationData.x;
+              selectedCustomerLng = locationData.y;
+            }
+          }
+        });
+      }
     }
   }
   
@@ -945,6 +993,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     const deliveryAddress = document.getElementById('customer-address').value;
     const dueTime = document.getElementById('customer-due-time').value;
+    const deliveryLocation = document.getElementById('customer-delivery-location')?.value;
     
     if (!deliveryAddress) {
       alert('Please enter a delivery address.');
@@ -956,10 +1005,13 @@ document.addEventListener('DOMContentLoaded', function() {
       return;
     }
     
-    if (!selectedCustomerLat || !selectedCustomerLng) {
-      alert('Please select your delivery location on the map.');
+    if (!deliveryLocation) {
+      alert('Please select your delivery location.');
       return;
     }
+    
+    // Get location coordinates
+    const locationData = LocationData.locations[deliveryLocation];
     
     try {
       await apiCall('/api/customer/orders', 'POST', {
@@ -967,9 +1019,10 @@ document.addEventListener('DOMContentLoaded', function() {
         items: cartItems,
         total_price: cartTotal,
         delivery_address: deliveryAddress,
-        delivery_lat: selectedCustomerLat,
-        delivery_lng: selectedCustomerLng,
-        required_due_time: dueTime
+        delivery_lat: locationData ? locationData.x : 0,
+        delivery_lng: locationData ? locationData.y : 0,
+        required_due_time: dueTime,
+        customer_location_id: deliveryLocation // Add location ID for reference
       });
       
       alert('Your order has been placed successfully!');
@@ -979,11 +1032,8 @@ document.addEventListener('DOMContentLoaded', function() {
       document.getElementById('restaurant-menu-section').classList.add('hidden');
       currentRestaurant = null;
       
-      // Reset coordinates
-      selectedCustomerLat = 0;
-      selectedCustomerLng = 0;
-      document.getElementById('customer-lat').textContent = '0';
-      document.getElementById('customer-lng').textContent = '0';
+      // Reset delivery time
+      document.getElementById('customer-delivery-time').textContent = '0';
       
       // Reload customer orders
       loadCustomerOrders();
@@ -1013,8 +1063,9 @@ document.addEventListener('DOMContentLoaded', function() {
         orderCard.className = 'order-card';
         
         // For demo purposes, use pre-defined customer addresses
-        const customerId = `customer${order.id % 8 + 1}`;
+        const customerId = order.customer_location_id || `customer${order.id % 8 + 1}`;
         const customerAddress = LocationData.getAddressForLocation(customerId);
+        const travelTime = LocationData.getTravelTime('restaurant', customerId);
         
         // Format time
         const orderDate = new Date(order.created_at);
@@ -1029,9 +1080,8 @@ document.addEventListener('DOMContentLoaded', function() {
             <p><strong>Ordered:</strong> ${orderDate.toLocaleString()}</p>
             <p><strong>Required By:</strong> ${requiredDate.toLocaleString()}</p>
             <p><strong>Delivery Address:</strong> ${customerAddress || order.delivery_address}</p>
+            <p><strong>Estimated Delivery Time:</strong> ${travelTime} minutes</p>
             ${order.courier_name ? `<p><strong>Courier:</strong> ${order.courier_name}</p>` : ''}
-            ${order.estimated_delivery_time ? 
-              `<p><strong>Estimated Delivery:</strong> ${new Date(order.estimated_delivery_time).toLocaleString()}</p>` : ''}
           </div>
         `;
         
@@ -1095,8 +1145,9 @@ document.addEventListener('DOMContentLoaded', function() {
         orderCard.className = 'order-card';
         
         // For demo purposes, use pre-defined customer addresses
-        const customerId = `customer${order.id % 8 + 1}`;
+        const customerId = order.customer_location_id || `customer${order.id % 8 + 1}`;
         const customerAddress = LocationData.getAddressForLocation(customerId);
+        const travelTime = LocationData.getTravelTime('restaurant', customerId);
         
         orderCard.innerHTML = `
           <h4>Order #${order.id}</h4>
@@ -1108,6 +1159,7 @@ document.addEventListener('DOMContentLoaded', function() {
             <p><strong>Required By:</strong> ${new Date(order.required_due_time).toLocaleString()}</p>
             <p><strong>Status:</strong> ${order.status}</p>
             <p><strong>Total Price:</strong> $${order.total_price.toFixed(2)}</p>
+            <p><strong>Estimated Delivery Time:</strong> ${travelTime} minutes</p>
             <p><strong>Created:</strong> ${new Date(order.created_at).toLocaleString()}</p>
           </div>
         `;
@@ -1126,7 +1178,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const footer = document.querySelector('footer');
   if (footer) {
     footer.innerHTML = `
-      <p>Current Date and Time (UTC): 2025-06-09 02:07:21</p>
+      <p>Current Date and Time (UTC): 2025-06-09 02:16:57</p>
       <p>User: Muntasir-Mamun7</p>
     `;
   }
