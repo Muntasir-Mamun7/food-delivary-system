@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Food Delivery System</title>
   <link rel="stylesheet" href="styles.css">
-  <link rel="stylesheet" href="map-styles.css">
 </head>
 <body>
   <div class="container">
@@ -96,11 +95,21 @@
               <input type="text" id="delivery-address" required>
             </div>
             <div id="merchant-map-container">
-              <p>Select delivery location on the map:</p>
-              <div id="merchant-map" style="height: 400px; width: 100%; background-image: url('images/citymap.jpg'); background-size: cover; background-position: center; border: 1px solid #ddd; border-radius: 8px;"></div>
-              <p class="map-coordinates">
-                Coordinates: <span id="delivery-lat">0</span>, <span id="delivery-lng">0</span>
-              </p>
+              <div class="form-group">
+                <label for="customer-location">Select Customer Location:</label>
+                <select id="customer-location" class="form-control" required>
+                  <option value="">-- Select Customer Location --</option>
+                  <option value="customer1">Customer 1 - 123 Main St</option>
+                  <option value="customer2">Customer 2 - 456 Oak Ave</option>
+                  <option value="customer3">Customer 3 - 789 Maple Dr</option>
+                  <option value="customer4">Customer 4 - 321 Pine Rd</option>
+                  <option value="customer5">Customer 5 - 654 Cedar Ln</option>
+                  <option value="customer6">Customer 6 - 987 Elm Blvd</option>
+                  <option value="customer7">Customer 7 - 135 Birch Way</option>
+                  <option value="customer8">Customer 8 - 246 Walnut Ct</option>
+                </select>
+                <p><small>Estimated delivery time from restaurant: <span id="delivery-time-estimate">0</span> minutes</small></p>
+              </div>
             </div>
             <div class="form-group">
               <label for="due-time">Required Delivery Time</label>
@@ -135,7 +144,6 @@
         <div class="dashboard-section">
           <h3>Route Planning</h3>
           <div id="map-container">
-            <div id="courier-map" style="height: 400px; width: 100%; background-image: url('images/citymap.jpg'); background-size: cover; background-position: center; border: 1px solid #ddd; border-radius: 8px;"></div>
             <div id="route-info">
               <h4>Delivery Route</h4>
               <div id="route-stops"></div>
@@ -190,11 +198,21 @@
                 <input type="text" id="customer-address">
               </div>
               <div id="customer-map-container">
-                <p>Select your delivery location on the map:</p>
-                <div id="customer-map" style="height: 400px; width: 100%; background-image: url('images/citymap.jpg'); background-size: cover; background-position: center; border: 1px solid #ddd; border-radius: 8px;"></div>
-                <p class="map-coordinates">
-                  Coordinates: <span id="customer-lat">0</span>, <span id="customer-lng">0</span>
-                </p>
+                <div class="form-group">
+                  <label for="customer-delivery-location">Select Your Delivery Location:</label>
+                  <select id="customer-delivery-location" class="form-control" required>
+                    <option value="">-- Select Delivery Location --</option>
+                    <option value="customer1">Location 1 - 123 Main St</option>
+                    <option value="customer2">Location 2 - 456 Oak Ave</option>
+                    <option value="customer3">Location 3 - 789 Maple Dr</option>
+                    <option value="customer4">Location 4 - 321 Pine Rd</option>
+                    <option value="customer5">Location 5 - 654 Cedar Ln</option>
+                    <option value="customer6">Location 6 - 987 Elm Blvd</option>
+                    <option value="customer7">Location 7 - 135 Birch Way</option>
+                    <option value="customer8">Location 8 - 246 Walnut Ct</option>
+                  </select>
+                  <p><small>Estimated delivery time: <span id="customer-delivery-time">0</span> minutes</small></p>
+                </div>
               </div>
               <div class="form-group">
                 <label for="customer-due-time">Delivery Time</label>
@@ -236,11 +254,11 @@
 
   <!-- System Info -->
   <footer style="text-align: center; margin-top: 30px; font-size: 0.8em; color: #777;">
-    <p>Current Date and Time (UTC): 2025-06-09 02:01:00</p>
+    <p>Current Date and Time (UTC): 2025-06-09 02:20:34</p>
     <p>User: Muntasir-Mamun7</p>
   </footer>
   
-  <!-- Custom Map Implementation -->
+  <!-- Custom Route Planning -->
   <script src="js/locationData.js"></script>
   <script src="js/routePlanner.js"></script>
   
