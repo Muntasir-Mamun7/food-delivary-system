@@ -1,0 +1,504 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  line-height: 1.6;
+  color: #333;
+  background-color: #f5f5f5;
+}
+
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #ddd;
+}
+
+h1, h2, h3, h4 {
+  color: #FF5722;
+}
+
+.hidden {
+  display: none !important;
+}
+
+#user-info {
+  display: flex;
+  align-items: center;
+}
+
+#user-info span {
+  margin-right: 15px;
+}
+
+#user-role {
+  background-color: #3F51B5;
+  color: white;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+}
+
+button {
+  cursor: pointer;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  background-color: #3F51B5;
+  color: white;
+  transition: background-color 0.2s;
+}
+
+button:hover {
+  background-color: #303F9F;
+}
+
+.btn {
+  width: 100%;
+  padding: 12px;
+  font-size: 1rem;
+  background-color: #FF5722;
+  margin-top: 15px;
+}
+
+.btn:hover {
+  background-color: #E64A19;
+}
+
+.btn-secondary {
+  background-color: #757575;
+  margin-bottom: 15px;
+  display: inline-block;
+  width: auto;
+}
+
+.btn-secondary:hover {
+  background-color: #616161;
+}
+
+.tabs {
+  display: flex;
+  margin-bottom: 20px;
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 10px;
+  border-radius: 0;
+}
+
+.tab-btn.active {
+  background-color: #FF5722;
+}
+
+.form-container {
+  display: none;
+  background-color: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.form-container.active {
+  display: block;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 500;
+}
+
+.form-group input,
+.form-group select {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+.error-message {
+  color: #D32F2F;
+  margin-top: 15px;
+  font-size: 0.9rem;
+}
+
+.dashboard-section {
+  background-color: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  margin-bottom: 30px;
+}
+
+.dashboard-section h3 {
+  margin-bottom: 20px;
+}
+
+.orders-list,
+.users-list {
+  display: grid;
+  gap: 15px;
+}
+
+.order-card,
+.user-card {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 15px;
+  background-color: #f9f9f9;
+}
+
+.order-card h4 {
+  margin-bottom: 10px;
+}
+
+.order-card-details {
+  margin-bottom: 10px;
+}
+
+.order-card-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.order-item {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.order-item input {
+  flex: 1;
+  padding: 8px;
+}
+
+.remove-item {
+  padding: 5px 10px;
+}
+
+#add-item-btn {
+  margin-bottom: 15px;
+  background-color: #4CAF50;
+}
+
+#add-item-btn:hover {
+  background-color: #3e8e41;
+}
+
+/* Map Container Styles */
+#map-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+#courier-map, #merchant-map, #customer-map {
+  height: 400px;
+  flex: 2;
+  min-width: 300px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #ddd;
+  margin-bottom: 15px;
+  position: relative; /* Added for custom map implementation */
+}
+
+#merchant-map-container, #customer-map-container {
+  margin-bottom: 20px;
+}
+
+.map-coordinates {
+  font-size: 0.9rem;
+  color: #666;
+  margin-top: 5px;
+  margin-bottom: 15px;
+}
+
+#route-info {
+  flex: 1;
+  min-width: 250px;
+}
+
+.route-stop {
+  padding: 10px;
+  margin-bottom: 10px;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+  border-left: 4px solid #FF5722;
+}
+
+.eta {
+  font-weight: bold;
+  color: #FF5722;
+}
+
+.stop-start {
+  border-left-color: #9C27B0;
+}
+
+.stop-merchant {
+  border-left-color: #4CAF50;
+}
+
+.stop-customer {
+  border-left-color: #2196F3;
+}
+
+/* Custom marker styles */
+.custom-marker {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: #FF5722;
+  border: 2px solid white;
+  box-shadow: 0 0 4px rgba(0,0,0,0.5);
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: absolute;
+  transform: translate(-50%, -50%);
+  z-index: 100;
+}
+
+/* New styles for restaurant and menu */
+.restaurants-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.restaurant-card {
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: white;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.restaurant-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+.restaurant-card-content {
+  padding: 15px;
+}
+
+.restaurant-card h4 {
+  margin-bottom: 8px;
+}
+
+.restaurant-card p {
+  color: #666;
+  margin-bottom: 15px;
+}
+
+.restaurant-card .btn {
+  margin-top: 5px;
+}
+
+.menu-list {
+  margin-bottom: 30px;
+}
+
+.menu-category {
+  margin-bottom: 20px;
+}
+
+.menu-category h4 {
+  margin-bottom: 10px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid #eee;
+}
+
+.menu-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  background-color: #f9f9f9;
+  align-items: center;
+}
+
+.menu-item-info {
+  flex: 1;
+}
+
+.menu-item-name {
+  font-weight: 500;
+  margin-bottom: 5px;
+}
+
+.menu-item-description {
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.menu-item-price {
+  font-weight: 500;
+  color: #FF5722;
+  margin: 0 10px;
+}
+
+.menu-item-actions {
+  display: flex;
+  align-items: center;
+}
+
+.quantity-control {
+  display: flex;
+  align-items: center;
+  margin-right: 10px;
+}
+
+.quantity-btn {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  font-size: 1.2rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.quantity-display {
+  width: 30px;
+  text-align: center;
+  margin: 0 5px;
+}
+
+.add-to-cart-btn {
+  background-color: #4CAF50;
+}
+
+.add-to-cart-btn:hover {
+  background-color: #3e8e41;
+}
+
+#cart-items {
+  margin-bottom: 20px;
+}
+
+.cart-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+}
+
+.cart-item-name {
+  flex: 1;
+}
+
+.cart-item-quantity {
+  margin: 0 15px;
+  color: #757575;
+}
+
+.cart-item-price {
+  font-weight: 500;
+  margin: 0 15px;
+}
+
+.cart-item-total {
+  font-weight: 500;
+  color: #FF5722;
+  margin: 0 15px;
+}
+
+.cart-item-remove {
+  color: #D32F2F;
+  background: none;
+  padding: 0;
+  margin-left: 10px;
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+#cart-total {
+  background-color: #f5f5f5;
+  padding: 15px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+}
+
+#cart-total p {
+  font-size: 1.2rem;
+  font-weight: 500;
+  margin-bottom: 15px;
+}
+
+#cart-total-price {
+  color: #FF5722;
+}
+
+/* Custom Map Implementation Styles */
+.map-popup {
+  position: absolute;
+  background-color: white;
+  padding: 10px;
+  border-radius: 4px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  z-index: 200;
+  min-width: 150px;
+  max-width: 250px;
+}
+
+/* Route Line Styles */
+.route-line {
+  position: absolute;
+  height: 3px;
+  background-color: #FF5722;
+  opacity: 0.7;
+  transform-origin: 0 0;
+  z-index: 90;
+}
+
+/* Make the map responsive */
+@media (max-width: 768px) {
+  #map-container {
+    flex-direction: column;
+  }
+  
+  #courier-map, #merchant-map, #customer-map {
+    height: 300px;
+  }
+  
+  .restaurants-list {
+    grid-template-columns: 1fr;
+  }
+  
+  .menu-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .menu-item-actions {
+    margin-top: 10px;
+    width: 100%;
+    justify-content: space-between;
+  }
+}
