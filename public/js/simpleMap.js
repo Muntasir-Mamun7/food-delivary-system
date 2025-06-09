@@ -27,7 +27,39 @@ class SimpleMap {
     
     // Create the map image element
     this.mapImage = document.createElement('img');
-    this.mapImage.src = 'images/citymap.jpg'; // Placeholder - you'll replace with your own image
+    
+    // Try multiple possible paths (adjust as needed for your server setup)
+    // Option 1: Relative to current HTML file
+    this.mapImage.src = 'images/citymap.jpg';
+    
+    // Option 2: From server root
+    // Uncomment the next line if Option 1 doesn't work
+    // this.mapImage.src = '/images/citymap.jpg';
+    
+    // Option 3: Relative to JS file in subdirectory
+    // Uncomment the next line if Options 1 and 2 don't work
+    // this.mapImage.src = '../images/citymap.jpg';
+    
+    // Add error handling for image loading issues
+    this.mapImage.onerror = function() {
+      console.error('Failed to load map image at path:', this.src);
+      
+      // Try the alternate path if the first one fails
+      if (this.src.indexOf('images/citymap.jpg') === 0) {
+        console.log('Trying alternate path...');
+        this.src = '/images/citymap.jpg';
+      } else if (this.src.indexOf('/images/citymap.jpg') === 0) {
+        console.log('Trying second alternate path...');
+        this.src = '../images/citymap.jpg';
+      } else {
+        alert('Map image failed to load. Please check the console for details.');
+      }
+    };
+    
+    this.mapImage.onload = function() {
+      console.log('Map image loaded successfully');
+    };
+    
     this.mapImage.style.width = '100%';
     this.mapImage.style.display = 'block';
     
@@ -43,6 +75,24 @@ class SimpleMap {
     // Add elements to container
     this.container.appendChild(this.mapImage);
     this.container.appendChild(this.overlay);
+    
+    // Add a loading message that will be replaced when image loads
+    const loadingMessage = document.createElement('div');
+    loadingMessage.textContent = 'Loading map...';
+    loadingMessage.style.position = 'absolute';
+    loadingMessage.style.top = '50%';
+    loadingMessage.style.left = '50%';
+    loadingMessage.style.transform = 'translate(-50%, -50%)';
+    loadingMessage.style.padding = '10px';
+    loadingMessage.style.backgroundColor = 'rgba(255, 255, 255, 0.8)';
+    loadingMessage.style.borderRadius = '4px';
+    this.container.appendChild(loadingMessage);
+    
+    // Remove loading message when image loads
+    this.mapImage.onload = function() {
+      console.log('Map image loaded successfully');
+      loadingMessage.remove();
+    };
   }
   
   attachEventListeners() {
@@ -216,11 +266,11 @@ class SimpleMap {
     const containerPos = this.container.getBoundingClientRect();
     
     // Position the popup above the marker
-    const top = (markerPos.top - containerPos.top) - popup.offsetHeight - 10;
+    const top = (markerPos.top - containerPos.top) - 10;
     const left = (markerPos.left - containerPos.left) - (popup.offsetWidth / 2) + (marker.offsetWidth / 2);
     
-    popup.style.top = `${top}px`;
-    popup.style.left = `${left}px`;
+    popup.style.top = `${Math.max(10, top - popup.offsetHeight)}px`;
+    popup.style.left = `${Math.max(10, left)}px`;
     
     // Add close button
     const closeButton = document.createElement('button');
@@ -238,6 +288,15 @@ class SimpleMap {
     // Add to overlay
     this.overlay.appendChild(popup);
     this.currentPopup = popup;
+    
+    // Adjust popup position after it's been added to the DOM
+    setTimeout(() => {
+      if (this.currentPopup) {
+        const popupHeight = this.currentPopup.offsetHeight;
+        const adjustedTop = Math.max(10, top - popupHeight);
+        this.currentPopup.style.top = `${adjustedTop}px`;
+      }
+    }, 0);
   }
   
   // Hide popup
