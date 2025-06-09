@@ -212,28 +212,6 @@ button:hover {
   gap: 20px;
 }
 
-#courier-map, #merchant-map, #customer-map {
-  height: 400px;
-  flex: 2;
-  min-width: 300px;
-  border-radius: 8px;
-  overflow: hidden;
-  border: 1px solid #ddd;
-  margin-bottom: 15px;
-  position: relative; /* Added for custom map implementation */
-}
-
-#merchant-map-container, #customer-map-container {
-  margin-bottom: 20px;
-}
-
-.map-coordinates {
-  font-size: 0.9rem;
-  color: #666;
-  margin-top: 5px;
-  margin-bottom: 15px;
-}
-
 #route-info {
   flex: 1;
   min-width: 250px;
@@ -262,23 +240,6 @@ button:hover {
 
 .stop-customer {
   border-left-color: #2196F3;
-}
-
-/* Custom marker styles */
-.custom-marker {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background-color: #FF5722;
-  border: 2px solid white;
-  box-shadow: 0 0 4px rgba(0,0,0,0.5);
-  cursor: pointer;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  position: absolute;
-  transform: translate(-50%, -50%);
-  z-index: 100;
 }
 
 /* New styles for restaurant and menu */
@@ -455,36 +416,33 @@ button:hover {
   color: #FF5722;
 }
 
-/* Custom Map Implementation Styles */
-.map-popup {
-  position: absolute;
-  background-color: white;
-  padding: 10px;
+/* Route summary styles */
+.route-summary {
+  background-color: #e8f5e9;
+  padding: 15px;
   border-radius: 4px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-  z-index: 200;
-  min-width: 150px;
-  max-width: 250px;
+  margin-top: 20px;
 }
 
-/* Route Line Styles */
-.route-line {
-  position: absolute;
-  height: 3px;
-  background-color: #FF5722;
-  opacity: 0.7;
-  transform-origin: 0 0;
-  z-index: 90;
+.route-summary p {
+  font-weight: 500;
 }
 
-/* Make the map responsive */
+/* Form styling for location selects */
+.form-control {
+  display: block;
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  font-size: 1rem;
+}
+
+/* Make responsive for mobile */
 @media (max-width: 768px) {
   #map-container {
     flex-direction: column;
-  }
-  
-  #courier-map, #merchant-map, #customer-map {
-    height: 300px;
   }
   
   .restaurants-list {
@@ -500,5 +458,13 @@ button:hover {
     margin-top: 10px;
     width: 100%;
     justify-content: space-between;
+  }
+  
+  .order-item {
+    flex-direction: column;
+  }
+  
+  .cart-item {
+    flex-wrap: wrap;
   }
 }
