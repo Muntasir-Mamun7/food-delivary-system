@@ -26,10 +26,13 @@ class RoutePlanner {
     
     // Create pickup-delivery pairs for each order
     const orderPairs = orders.map(order => {
+      // Ensure we're using the correct customer location ID
+      const customerId = order.customer_location_id || order.customerId || `customer${order.id % 8 + 1}`;
+      
       return {
         orderId: order.id,
         pickupId: 'restaurant', // All pickups are from the restaurant
-        deliveryId: order.customerId || order.customer_id || `customer${order.id % 8 + 1}`,
+        deliveryId: customerId,
         dueTime: new Date(order.required_due_time).getTime()
       };
     });
@@ -164,14 +167,21 @@ class RoutePlanner {
   estimateDeliveryTime(order, currentLocationId = 'restaurant') {
     const { getTravelTime } = this.locationData;
     
-    // Get customer ID from order
-    const customerId = order.customerId || order.customer_id || `customer${order.id % 8 + 1}`;
+    // Get customer ID from order - FIXED to properly extract the customer location
+    const customerId = order.customer_location_id || `customer${order.id % 8 + 1}`;
+    
+    // Log for debugging
+    console.log(`Estimating delivery time for order #${order.id}, customer: ${customerId}`);
     
     // Calculate travel time from current location to restaurant (if not already there)
     let totalTime = currentLocationId === 'restaurant' ? 0 : getTravelTime(currentLocationId, 'restaurant');
     
     // Add time from restaurant to customer
-    totalTime += getTravelTime('restaurant', customerId);
+    const customerToRestaurantTime = getTravelTime('restaurant', customerId);
+    totalTime += customerToRestaurantTime;
+    
+    // Log the calculated time
+    console.log(`Travel time from restaurant to ${customerId}: ${customerToRestaurantTime} minutes`);
     
     // Add 5 minutes for pickup and handling
     totalTime += 5;
