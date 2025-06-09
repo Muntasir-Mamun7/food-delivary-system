@@ -18,8 +18,7 @@ class RoutePlanner {
     if (!orders || orders.length === 0) {
       return {
         route: [],
-        totalTime: 0,
-        totalDistance: 0
+        totalTime: 0
       };
     }
     
@@ -30,7 +29,7 @@ class RoutePlanner {
       return {
         orderId: order.id,
         pickupId: 'restaurant', // All pickups are from the restaurant
-        deliveryId: order.customerId || order.customer_id,
+        deliveryId: order.customerId || order.customer_id || `customer${order.id % 8 + 1}`,
         dueTime: new Date(order.required_due_time).getTime()
       };
     });
@@ -56,12 +55,12 @@ class RoutePlanner {
     // Start with current location as the start location
     let currentLocationId = startLocationId;
     let currentTime = Date.now(); // Start with current time
-    let totalDistance = 0;
+    let totalTime = 0;
     
     // Continue until all orders are delivered
     while (locationsToVisit.size > 0 || pickedUpOrders.length > 0) {
       let nextLocationId = null;
-      let minTime = Infinity;
+      let minCost = Infinity;
       let nextAction = null;
       let nextOrderId = null;
       
@@ -74,11 +73,11 @@ class RoutePlanner {
           const timeUntilDue = orderPair.dueTime - estimatedTime;
           
           // Prioritize orders that need to be delivered soon
-          const priority = (timeUntilDue < 0) ? -99999999 : -travelTime; // Negative time means late
+          const cost = (timeUntilDue < 0) ? 99999999 : travelTime; // Negative time means late
           
-          if (priority > minTime) {
+          if (cost < minCost) {
             nextLocationId = orderPair.deliveryId;
-            minTime = priority;
+            minCost = cost;
             nextAction = 'deliver';
             nextOrderId = orderPair.orderId;
           }
@@ -91,9 +90,9 @@ class RoutePlanner {
           const travelTime = getTravelTime(currentLocationId, locationId);
           
           // Simple greedy approach: choose the closest pickup
-          if (-travelTime > minTime) {
+          if (travelTime < minCost) {
             nextLocationId = locationId;
-            minTime = -travelTime;
+            minCost = travelTime;
             nextAction = 'pickup';
           }
         }
@@ -101,19 +100,17 @@ class RoutePlanner {
       
       // If we found a next location, update route
       if (nextLocationId) {
-        // Calculate travel time and distance
+        // Calculate travel time
         const travelTime = getTravelTime(currentLocationId, nextLocationId);
-        const distance = this.locationData.travelDistanceMatrix[currentLocationId][nextLocationId];
         
         currentTime += travelTime * 60 * 1000; // Add travel time (convert minutes to ms)
-        totalDistance += distance;
+        totalTime += travelTime;
         
         // Add to route
         route.push({
           locationId: nextLocationId,
           type: nextAction,
           time: travelTime,
-          distance: distance,
           estimatedArrival: new Date(currentTime).toISOString(),
           orderId: nextOrderId
         });
@@ -152,13 +149,9 @@ class RoutePlanner {
       }
     }
     
-    // Calculate total time in minutes
-    const totalTime = route.reduce((sum, stop) => sum + (stop.time || 0), 0);
-    
     return {
       route,
-      totalTime,
-      totalDistance
+      totalTime
     };
   }
   
